@@ -110,14 +110,14 @@ function reflection.execute(source, name)
     local self = reflection
     local func, err = loadstring(source, name)
     if not func then
-        print("[Reflection] ERROR: From '" .. name .. "' -> ", err)
+        print("[Reflection] ERROR: From '" .. name .. "' -> " .. err)
         return false, "compile", err
     end
 
     print("[Reflection] Executing > " .. name)
     local ran, err = xpcall(func, debug.traceback)
     if not ran then
-        print("[Reflection] ERROR: From '" .. name .. "' -> ", err)
+        print("[Reflection] ERROR: From '" .. name .. "' -> " .. err)
         return false, "runtime", err
     end
     
@@ -138,7 +138,7 @@ function reflection.execute(source, name)
 
             local ran, err = xpcall(callback, debug.traceback, mimic, self.session)
             if not ran then
-                print("[Reflection] ERROR: From '" .. name .. "' -> ", err)
+                print("[Reflection] ERROR: From '" .. name .. "' -> " .. err)
                 return false, "on_loaded", err
             end
         end
