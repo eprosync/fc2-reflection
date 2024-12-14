@@ -1,0 +1,81 @@
+{
+  "name": "fc2-reflection",
+  "displayName": "fc2 Reflection",
+  "description": "fc2 using reflection.lua for VS Code",
+  "publisher": "wholecream",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "fc2.execute",
+        "title": "fc2: Execute"
+      },
+      {
+        "command": "fc2.reset",
+        "title": "fc2: Reset"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "fc2",
+        "properties": {
+          "fc2.reflection.pipe": {
+            "title": "fc2 Reflection Pipe",
+            "type": "boolean",
+            "default": false,
+            "description": "Changes mode to PIPE for file-based communication"
+          },
+          "fc2.reflection.port": {
+            "title": "fc2 Reflection Port",
+            "type": "number",
+            "default": 9282,
+            "description": "The port we would need to use if using HTTP mode, Universe4 - 9282, Constellation4 - 9283"
+          },
+          "fc2.reflection.input": {
+            "title": "fc2 Reflection Input",
+            "type": "string",
+            "default": "",
+            "description": "The input location if using PIPE mode"
+          },
+          "fc2.reflection.output": {
+            "title": "fc2 Reflection Output",
+            "type": "string",
+            "default": "",
+            "description": "The output location if using PIPE mode"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/node-fetch": "^2.6.12",
+    "@types/vscode": "^1.96.0",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
