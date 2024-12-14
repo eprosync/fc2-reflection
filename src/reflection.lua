@@ -107,6 +107,7 @@ function reflection.on_loaded(script, session)
 end
 
 function reflection.execute(source, name)
+    local self = reflection
     local func, err = loadstring(source, name)
     if not func then
         print("[Reflection] ERROR: From '" .. name .. "' -> ", err)
