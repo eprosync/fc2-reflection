@@ -180,12 +180,14 @@ function reflection.command(chunk)
         end
     elseif command == "reload" then
         if type(chunk.script) == "string" then
+            print("[Reflection] Reloading script " .. chunk.script)
             fantasy.scripts():reload( chunk.script )
             return {
                 command = "reload",
                 script = chunk.script
             }
         else
+            print("[Reflection] Reloading all scripts")
             fantasy.scripts():reset( true )
             return {
                 command = "reload",
