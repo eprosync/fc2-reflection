@@ -23,6 +23,8 @@ local json = require("json") -- lib_json
             }
 
             export interface reset extends generic {}
+
+            export interface reload extends generic {}
         }
 
         export namespace Output {
@@ -41,6 +43,10 @@ local json = require("json") -- lib_json
             }
 
             export interface reset extends generic {}
+
+            export interface reload extends generic {
+                script: string | boolean
+            }
         }
     }
 ]]
@@ -171,6 +177,20 @@ function reflection.command(chunk)
                 reason = err
             }
         end
+    elseif command == "reload" then
+        if type(chunk.script) == "string" then
+            fantasy.scripts():reload( chunk.script )
+            return {
+                command = "reload",
+                script = chunk.script
+            }
+        else
+            fantasy.scripts():reset( true )
+            return {
+                command = "reload",
+                script = true
+            }
+        end
     elseif command == "session" then
         -- this is such a dumb hack
         self.session.command = "session"
@@ -238,9 +258,19 @@ function reflection.on_http_request( data )
         print("[Reflection] WARNING: Malformed JSON - " .. (chunk or "Unknown Error"))
         return json.encode({
             command = "error",
-            name = name,
+            name = self.script.name,
             type = "json",
             reason = (chunk or "Unknown Error")
+        })
+    end
+
+    local ran, err = xpcall(self.command, debug.traceback, chunk)
+    if not ran then
+        return json.encode({
+            command = "error",
+            name = self.script.name,
+            type = "internal",
+            reason = (err or "Unknown Error")
         })
     end
 
@@ -288,7 +318,17 @@ function reflection.on_worker()
 
     for i=1, #chunks do
         local chunk = chunks[i]
-        response[#response+1] = self.command(chunk)
+        local ran, err = xpcall(self.command, debug.traceback, chunk)
+        if not ran then
+            response[#response+1] = {
+                command = "error",
+                name = self.script.name,
+                type = "internal",
+                reason = (err or "Unknown Error")
+            }
+        else
+            response[#response+1] = self.command(chunk)
+        end
     end
 
     if #response > 0 then
