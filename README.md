@@ -9,6 +9,7 @@ Doing <kbd>Ctrl</kbd> + <kbd>P</kbd> does the same thing, just missing <kbd>></k
 
 * `fc2.execute` - Runs the current active file to fc2
 * `fc2.reset` - Removes all runtimes that was executed with reflection handlers
+* `fc2.reload` - Reloads all active lua scripts
 
 ## Modes
 There are two modes: HTTP and PIPE\
@@ -28,36 +29,42 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-    export namespace Input {
-        export type generic = {
-            command: string
-        }
+	export namespace Input {
+		export type generic = {
+			command: string
+		}
 
-        export interface execute extends generic {
-            name: string,
-            source: string
-        }
+		export interface execute extends generic {
+			name: string,
+			source: string
+		}
 
-        export interface reset extends generic {}
-    }
+		export interface reset extends generic {}
 
-    export namespace Output {
-        export interface generic {
-            command: string
-        }
+		export interface reload extends generic {}
+	}
 
-        export interface error extends generic {
-            name: string,
-            type: string,
-            reason: string
-        }
+	export namespace Output {
+		export interface generic {
+			command: string
+		}
 
-        export interface execute extends generic {
-            name: string
-        }
+		export interface error extends generic {
+			name: string,
+			type: string,
+			reason: string
+		}
 
-        export interface reset extends generic {}
-    }
+		export interface execute extends generic {
+			name: string
+		}
+
+		export interface reset extends generic {}
+
+		export interface reload extends generic {
+			script: string | boolean
+		}
+	}
 }
 ```
 

@@ -13,6 +13,8 @@ export namespace Reflection {
 		}
 
 		export interface reset extends generic {}
+
+		export interface reload extends generic {}
 	}
 
 	export namespace Output {
@@ -31,6 +33,10 @@ export namespace Reflection {
 		}
 
 		export interface reset extends generic {}
+
+		export interface reload extends generic {
+			script: string | boolean
+		}
 	}
 }
 
@@ -45,8 +51,6 @@ async function http(port: number, data: {[index: string | number]: any}): Promis
             },
             body: JSON.stringify(data),
         });
-
-		console.log(JSON.stringify(data));
 
         if (!response.ok) {
             throw new Error(`Status: ${response.status}`);
@@ -120,6 +124,59 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('fc2.reload', () => {
+		const config = vscode.workspace.getConfiguration("fc2.reflection");
+		const config_port: number | undefined = config.get("port");
+		const config_pipe: boolean | undefined = config.get("pipe");
+		const config_input: string | undefined = config.get("input");
+		
+		if (config_pipe) {
+			if (!config_input || !fs.existsSync(config_input)) {
+				vscode.window.showErrorMessage("fc2: cannot execute due to invalid reflection pipe (see fc2.reflection.input in settings)");
+				return;
+			}
+
+			fs.writeFileSync(config_input, JSON.stringify([
+				{
+					command: "reload",
+					script: true
+				}
+			]));
+
+			vscode.window.showInformationMessage('Reloading fc2 scripts via pipe');
+		} else {
+			if (!config_port) {
+				vscode.window.showErrorMessage("fc2: cannot execute due to invalid port (see fc2.reflection.port in settings)");
+				return;
+			}
+
+			http(config_port, {
+				command: "reload",
+				script: true
+			}).then((element) => {
+				if (!element) {
+					vscode.window.showErrorMessage("fc2: cannot reload - invalid response");
+					return;
+				}
+
+				switch (element.command) {
+					case "error":
+						const error = element as Reflection.Output.error;
+						vscode.window.showErrorMessage("fc2: ERROR - " + error.type + " - " + (error.reason || "unknown"));
+						break;
+					case "reload":
+						const reload = element as Reflection.Output.reload;
+						if (reload.script === true) {
+							vscode.window.showInformationMessage(`fc2: Reloaded all scripts`);
+						} else {
+							vscode.window.showInformationMessage(`fc2: Reloaded script ${reload.script}`);
+						}
+						break;
+				}
+			});
+		}
+	}));
+
 	context.subscriptions.push(vscode.commands.registerCommand('fc2.reset', () => {
 		const config = vscode.workspace.getConfiguration("fc2.reflection");
 		const config_port: number | undefined = config.get("port");
@@ -149,7 +206,7 @@ export function activate(context: vscode.ExtensionContext) {
 				command: "reset"
 			}).then((element) => {
 				if (!element) {
-					vscode.window.showErrorMessage("fc2: cannot execute - invalid response");
+					vscode.window.showErrorMessage("fc2: cannot reset - invalid response");
 					return;
 				}
 

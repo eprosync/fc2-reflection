@@ -21,6 +21,10 @@
       {
         "command": "fc2.reset",
         "title": "fc2: Reset"
+      },
+      {
+        "command": "fc2.reload",
+        "title": "fc2: Reload"
       }
     ],
     "configuration": [
