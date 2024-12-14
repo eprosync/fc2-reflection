@@ -277,7 +277,7 @@ function reflection.on_http_request( data )
         })
     end
 
-    return json.encode(self.command(chunk))
+    return json.encode(err)
 end
 
 local defer = os.clock()
@@ -330,7 +330,7 @@ function reflection.on_worker()
                 reason = (err or "Unknown Error")
             }
         else
-            response[#response+1] = self.command(chunk)
+            response[#response+1] = err
         end
     end
 
