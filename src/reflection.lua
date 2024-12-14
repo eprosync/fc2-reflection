@@ -24,7 +24,9 @@ local json = require("json") -- lib_json
 
             export interface reset extends generic {}
 
-            export interface reload extends generic {}
+            export interface reload extends generic {
+                script: string | boolean | undefined
+            }
         }
 
         export namespace Output {
