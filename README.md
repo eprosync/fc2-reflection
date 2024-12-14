@@ -1,5 +1,5 @@
 # FC2 - Reflection
-A simply (and terrible) lua helper, to help you develop stuff.\
+A simple (and terrible) lua helper, to help you develop stuff.\
 Because reloading all lua files is not an option for me - WholeCream
 
 ## Usage
