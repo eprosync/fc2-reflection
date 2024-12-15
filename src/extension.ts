@@ -156,7 +156,7 @@ function fc2Handle(element: Reflection.Output.generic) {
             break;
         case "execute":
             const execute = element as Reflection.Output.execute;
-            vscode.window.showErrorMessage("fc2: Execution successful - " + execute.name);
+            vscode.window.showInformationMessage("fc2: Execution successful - " + execute.name);
             break;
         case "reset":
             vscode.window.showErrorMessage("fc2: Cleared runtimes");
