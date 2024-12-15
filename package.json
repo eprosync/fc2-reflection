@@ -3,7 +3,7 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -15,6 +15,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "fc2.auth",
+        "title": "fc2: Authenticate"
+      },
+      {
         "command": "fc2.execute",
         "title": "fc2: Execute"
       },
@@ -25,8 +29,49 @@
       {
         "command": "fc2.reload",
         "title": "fc2: Reload"
+      },
+      {
+        "command": "fc2.scripts",
+        "title": "fc2: Scripts"
+      },
+      {
+        "command": "fc2.copy",
+        "title": "Copy",
+        "icon": "$(output-view-icon)"
+      },
+      {
+        "command": "fc2.scripts.toggle",
+        "title": "Toggle",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "fc2.scripts.open",
+        "title": "Open",
+        "icon": "$(cloud-download)"
       }
     ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "fc2.copy",
+          "when": "viewItem == fc2Detail",
+          "group": "inline",
+          "icon": "$(copy)"
+        },
+        {
+          "command": "fc2.scripts.toggle",
+          "when": "viewItem == fc2ScriptEntry",
+          "group": "inline",
+          "icon": "$(play-circle)"
+        },
+        {
+          "command": "fc2.scripts.open",
+          "when": "viewItem == fc2ScriptEntry",
+          "group": "inline",
+          "icon": "$(cloud-download)"
+        }
+      ]
+    },
     "configuration": [
       {
         "title": "fc2",
@@ -57,7 +102,32 @@
           }
         }
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "fc2-sidebar",
+          "title": "fc2 - Reflection",
+          "icon": "$(star)"
+        }
+      ]
+    },
+    "views": {
+      "fc2-sidebar": [
+        {
+          "id": "fc2-runtime",
+          "name": "Runtime"
+        },
+        {
+          "id": "fc2-scripts",
+          "name": "Scripts"
+        },
+        {
+          "id": "fc2-session",
+          "name": "Session"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

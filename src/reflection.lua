@@ -53,6 +53,7 @@ local json = require("json") -- lib_json
     }
 ]]
 
+local reflection_version = 0x001
 local reflection = { -- for now :cry:
     mode = 0, -- modes: http = 0, pipe = 1
     input = modules.file:current_directory() .. "\\reflection_input.txt",
@@ -158,7 +159,12 @@ end
 function reflection.command(chunk)
     local self = reflection
     local command = chunk.command
-    if command == "reset" then
+    if command == "version" then
+        return {
+            command = "version",
+            version = reflection_version
+        }
+    elseif command == "reset" then
         self.reset()
         return {
             command = "reset"
@@ -198,10 +204,15 @@ function reflection.command(chunk)
         end
     elseif command == "session" then
         -- this is such a dumb hack
-        self.session.command = "session"
-        local data = json.encode(self.session)
-        self.session.command = nil
-        return data
+        local t = {
+            command = "session"
+        }
+        for k, v in pairs(self.session) do
+            if type(v) ~= "function" then
+                t[k] = v
+            end
+        end
+        return t
     elseif command == "scripts" then
         -- Credits: consteliaxo @ typedev
         local scripts = fantasy.session:api("getAllScripts")
@@ -229,8 +240,8 @@ function reflection.command(chunk)
             -- etc... (all fc2 solutions)
             --]]
             if script["software"] >= 4 then
-                if json_getMember_result["scripts"] ~= nil then
-                    for _, enabled_script in pairs( json_getMember_result["scripts"] ) do
+                if members["scripts"] ~= nil then
+                    for _, enabled_script in pairs( members["scripts"] ) do
                         if script["id"] == enabled_script["id"] then
                             script["enabled"] = true
                         end
@@ -242,7 +253,30 @@ function reflection.command(chunk)
         end
 
         return response
+    elseif command == "script_toggle" then
+        if not type(chunk.id) == "number" then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "script_toggle",
+                reason = "id is not a number"
+            }
+        end
+
+        fantasy.session:api( fantasy.fmt( "toggleScriptStatus&id={}", chunk.id ) )
+
+        return {
+            command = "script_toggle",
+            id = chunk.id
+        }
     end
+
+    return {
+        command = "error",
+        name = self.script.name,
+        type = "command",
+        reason = command .. " is not a command"
+    }
 end
 
 -- http://localhost:9283/luar - constellation4
