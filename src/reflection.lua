@@ -249,12 +249,17 @@ function reflection.execute(source, name)
 
         local callback = err["on_loaded"]
         if type(callback) == "function" then
+            local nameid = self.nameid(tracker)
             local ran, err = xpcall(callback, debug.traceback, tracker, self.session)
             if not ran then
-                local nameid = self.nameid(tracker)
                 print("[Reflection] ERROR: From " .. nameid .. " -> " .. err)
                 print("[Reflection] Not adding to runtime due to error")
                 return false, "on_loaded", err
+            end
+
+            if err == false then
+                print("[Reflection] " .. nameid .. " returned false on load, so it won't be ran")
+                return true, err
             end
         end
         
