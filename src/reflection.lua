@@ -170,13 +170,16 @@ reflection.runtimes = {}
 function reflection.event(...)
     local self = reflection
     local runtimes = self.runtimes
+    local responses
     local c = 0
     for i=1, #runtimes do
         local runtime = runtimes[i]
         local callback = runtime.self[_event]
         if type(callback) == "function" then
-            local ran, err = xpcall(callback, debug.traceback, ...)
+            local returns = {xpcall(callback, debug.traceback, ...)}
+            local ran = table.remove(returns, 1)
             if not ran then
+                local err = table.remove(returns, 1)
                 local nameid = self.nameid(runtime.script)
                 self.enqueue({
                     command = "error",
@@ -187,8 +190,15 @@ function reflection.event(...)
                 print("[Reflection] ERROR: From '" .. nameid .. " -> ", err)
                 print("[Reflection] Removing '" .. nameid.. " from runtime (make sure to error isolate your code!)")
                 table.remove(runtimes, i-c) c = c + 1
+            else
+                if not responses and returns[1] ~= nil then
+                    responses = returns
+                end
             end
         end
+    end
+    if responses then
+        return unpack(responses)
     end
 end
 
@@ -446,8 +456,7 @@ function reflection.on_http_request( data )
 
     if data["path"] ~= "/luar" or data["script"] ~= self.script.name or not data["params"] or not data["params"]["reflection"] then
         _event = "on_http_request"
-        self.event(data)
-        return
+        return self.event(data)
     end
 
     local body = data["body"] or ""
@@ -535,14 +544,16 @@ end
 local defer = os.clock()
 function reflection.on_worker()
     local self = reflection
-    _event = "on_worker"
-    self.event()
 
     local t = os.clock()
-    if defer + self.delay > t then return end
-    defer = t
-    self.pipe_read()
-    self.pipe_write()
+    if defer + self.delay < t then
+        defer = t
+        self.pipe_read()
+        self.pipe_write()
+    end
+
+    _event = "on_worker"
+    self.event()
 end
 
 return reflection
