@@ -2,9 +2,8 @@ local modules = require("modules") -- lib_modules
 local json = require("json") -- lib_json
 --[[
     FC2 - Reflection
-    A simply (and terrible) lua helper, to help you develop stuff.
+    A simple (and terrible) lua helper, to help you develop stuff.
     Because reloading all lua files is not an option for me - WholeCream
-    (Yes you make the editor, idc, make it a vs-code thingy)
 
     There are two modes: HTTP and PIPE
     HTTP - uses on_http_request to handle information
@@ -30,6 +29,13 @@ local json = require("json") -- lib_json
             software: number,
             team: string[],
             update_notes: string
+        }
+
+        export interface runtime {
+            name: string,
+            source: string,
+            time: number,
+            id: number
         }
 
         export interface session {
@@ -68,7 +74,11 @@ local json = require("json") -- lib_json
                 name: string,
                 source: string
             }
-            export interface reset extends generic {}
+            export interface runtimes extends generic {}
+            export interface kill_runtime extends generic {
+                id: number
+            }
+            export interface reset_runtimes extends generic {}
             export interface reload extends generic {}
 
             export interface scripts extends generic {}
@@ -99,7 +109,16 @@ local json = require("json") -- lib_json
                 name: string
             }
 
-            export interface reset extends generic {}
+            export interface runtimes extends generic {
+                list: runtime[]
+            }
+
+            export interface kill_runtime extends generic {
+                name?: string,
+                id: number
+            }
+
+            export interface reset_runtimes extends generic {}
 
             export interface reload extends generic {
                 script: string | boolean
@@ -116,9 +135,8 @@ local json = require("json") -- lib_json
     }
 ]]
 
-local reflection_version = 0x001
+local reflection_version = 0x003
 local reflection = { -- for now :cry:
-    mode = 0, -- modes: http = 0, pipe = 1
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",
     delay = 1
@@ -134,24 +152,44 @@ setmetatable(reflection, {
     end
 })
 
+function reflection.nameid(tracker)
+    return "'" .. (tracker.name or "unknown") .. "'#" .. tracker.id
+end
+
+function reflection.hash(str)
+    local hash = 0
+    local prime = 31
+    for i = 1, #str do
+        local char = str:byte(i)
+        hash = (hash * prime + char) % 2^32
+    end
+    return hash
+end
+
 reflection.runtimes = {}
 function reflection.event(...)
     local self = reflection
     local runtimes = self.runtimes
+    local c = 0
     for i=1, #runtimes do
-        local script = runtimes[i]
-        local callback = script.self[_event]
+        local runtime = runtimes[i]
+        local callback = runtime.self[_event]
         if type(callback) == "function" then
             local ran, err = xpcall(callback, debug.traceback, ...)
             if not ran then
-                print("[Reflection] ERROR: From '" .. (script.name or "unknown") .. "' -> ", err)
+                local nameid = self.nameid(runtime.script)
+                self.enqueue({
+                    command = "error",
+                    name = nameid,
+                    type = _event,
+                    reason = err
+                })
+                print("[Reflection] ERROR: From '" .. nameid .. " -> ", err)
+                print("[Reflection] Removing '" .. nameid.. " from runtime (make sure to error isolate your code!)")
+                table.remove(runtimes, i-c) c = c + 1
             end
         end
     end
-end
-
-function reflection.reset()
-    reflection.runtimes = {}
 end
 
 function reflection.on_loaded(script, session)
@@ -190,28 +228,40 @@ function reflection.execute(source, name)
     if type(err) == "table" then
         print("[Reflection] Module > " .. name)
 
+        local tracker = {}
+        for k, v in pairs(self.script) do
+            tracker[k] = v
+        end
+        tracker.buffer = source
+        tracker.name = name
+        tracker.time = os.time()
+        tracker.id = self.hash(name)
+
         local callback = err["on_loaded"]
         if type(callback) == "function" then
-
-            local mimic = {}
-            for k, v in pairs(self.script) do
-                mimic[k] = v
-            end
-            mimic.buffer = source
-            mimic.name = name
-            mimic.time = os.time()
-            mimic.id = math.random(10000000, 99999999) -- probably a bad idea :)
-
-            local ran, err = xpcall(callback, debug.traceback, mimic, self.session)
+            local ran, err = xpcall(callback, debug.traceback, tracker, self.session)
             if not ran then
-                print("[Reflection] ERROR: From '" .. name .. "' -> " .. err)
+                local nameid = self.nameid(tracker)
+                print("[Reflection] ERROR: From " .. nameid .. " -> " .. err)
+                print("[Reflection] Not adding to runtime due to error")
                 return false, "on_loaded", err
             end
         end
         
         local runtimes = self.runtimes
+
+        for i=1, #runtimes do
+            local runtime = runtimes[i]
+            if runtime.script.id == tracker.id then
+                local nameid = self.nameid(tracker)
+                print("[Reflection] " .. nameid .. " already exists, reloading runtime")
+                table.remove(runtimes, i)
+                break
+            end
+        end
+
         runtimes[#runtimes+1] = {
-            name = name,
+            script = tracker,
             self = err
         }
     end
@@ -226,11 +276,6 @@ function reflection.command(chunk)
         return {
             command = "version",
             version = reflection_version
-        }
-    elseif command == "reset" then
-        self.reset()
-        return {
-            command = "reset"
         }
     elseif command == "execute" then
         local source = chunk.source
@@ -249,6 +294,58 @@ function reflection.command(chunk)
                 reason = err
             }
         end
+    elseif command == "runtimes" then
+        local runtimes = self.runtimes
+        local t = {}
+        for i=1, #runtimes do
+            local runtime = runtimes[i]
+            t[#t+1] = {
+                name = runtime.script.name,
+                source = runtime.script.buffer,
+                time = runtime.script.time,
+                id = runtime.script.id
+            }
+        end
+        return {
+            command = "runtimes",
+            list = t
+        }
+    elseif command == "reset_runtimes" then
+        self.runtimes = {}
+        print("[Reflection] Runtimes have been killed")
+        return {
+            command = "reset_runtimes"
+        }
+    elseif command == "kill_runtime" then
+        local id = chunk.id
+        if not type(id) == "number" then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "kill_runtime",
+                reason = "id is not a number"
+            }
+        end
+
+        local runtimes = self.runtimes
+        for i=1, #runtimes do
+            local runtime = runtimes[i]
+            if runtime.script.id == id then
+                local nameid = self.nameid(runtime.script)
+                print("[Reflection] " .. nameid .. " killed")
+                table.remove(runtimes, i)
+                return {
+                    command = "kill_runtime",
+                    name = runtime.script.name,
+                    id = id
+                }
+            end
+        end
+
+        return {
+            command = "kill_runtime",
+            id = id
+        }
     elseif command == "reload" then
         if type(chunk.script) == "string" then
             print("[Reflection] Reloading script " .. chunk.script)
@@ -346,7 +443,6 @@ end
 -- http://localhost:9282/luar - universe4
 function reflection.on_http_request( data )
     local self = reflection
-    if self.mode ~= 0 then return end
 
     if data["path"] ~= "/luar" or data["script"] ~= self.script.name or not data["params"] or not data["params"]["reflection"] then
         _event = "on_http_request"
@@ -379,18 +475,23 @@ function reflection.on_http_request( data )
     return json.encode(err)
 end
 
-local defer = os.clock()
-function reflection.on_worker()
+reflection.queue = {}
+function reflection.enqueue(command)
+    local queue = reflection.queue
+    queue[#queue+1] = command
+end
+
+function reflection.pipe_write()
     local self = reflection
-    _event = "on_worker"
-    self.event()
+    if #self.queue > 0 and modules.file:is_empty(self.output) then
+        local queue = self.queue
+        self.queue = {}
+        modules.file:write(self.output, json.encode(queue))
+    end
+end
 
-    if self.mode ~= 1 then return end
-
-    local t = os.clock()
-    if defer + self.delay > t then return end
-    defer = t
-
+function reflection.pipe_read()
+    local self = reflection
     if not modules.file:exists(self.input) then return end
     local data = modules.file:read(self.input)
     if #data < 1 then return end
@@ -415,27 +516,33 @@ function reflection.on_worker()
         end
     end
 
-    local response = {}
-    local runtimes = self.runtimes
-
     for i=1, #chunks do
         local chunk = chunks[i]
         local ran, err = xpcall(self.command, debug.traceback, chunk)
         if not ran then
-            response[#response+1] = {
+            self.enqueue({
                 command = "error",
                 name = self.script.name,
                 type = "internal",
                 reason = (err or "Unknown Error")
-            }
+            })
         else
-            response[#response+1] = err
+            self.enqueue(err)
         end
     end
+end
 
-    if #response > 0 then
-        modules.file:write(self.output, json.encode(response))
-    end
+local defer = os.clock()
+function reflection.on_worker()
+    local self = reflection
+    _event = "on_worker"
+    self.event()
+
+    local t = os.clock()
+    if defer + self.delay > t then return end
+    defer = t
+    self.pipe_read()
+    self.pipe_write()
 end
 
 return reflection

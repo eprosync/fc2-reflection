@@ -7,14 +7,14 @@ We use the command pallete for running actions onto fc2.\
 To do this simply <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> to open the pallete in command mode\
 Doing <kbd>Ctrl</kbd> + <kbd>P</kbd> does the same thing, just missing <kbd>></kbd> before it
 
-* `fc2.execute` - Runs the current active file to fc2
-* `fc2.reset` - Removes all runtimes that was executed with reflection handlers
-* `fc2.reload` - Reloads all active lua scripts
+* `fc2: Execute` - Runs the current active file to fc2
+* `fc2: Authenticate` - Reconnects & authenticates with fc2
 
 ## Modes
 There are two modes: HTTP and PIPE\
 `HTTP` [0] - uses on_http_request to handle information\
-`PIPE` [1] - uses file-based operations to handle requests (yes this is horrible, I cry)
+`PIPE` [1] - uses file-based operations to handle requests (yes this is horrible, I cry)\
+Do note that we still try to red from output pipe for asyncronous actions done.
 
 ## Configuration
 By default we have reflection.lua set on HTTP.
@@ -29,7 +29,7 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-    export const version = 0x001;
+    export const version = 0x003;
     export let active: boolean = false;
 
     export interface script {
@@ -47,6 +47,13 @@ export namespace Reflection {
         software: number,
         team: string[],
         update_notes: string
+    }
+
+    export interface runtime {
+        name: string,
+        source: string,
+        time: number,
+        id: number
     }
 
     export interface session {
@@ -85,7 +92,11 @@ export namespace Reflection {
             name: string,
             source: string
         }
-        export interface reset extends generic {}
+        export interface runtimes extends generic {}
+        export interface kill_runtime extends generic {
+            id: number
+        }
+        export interface reset_runtimes extends generic {}
         export interface reload extends generic {}
 
         export interface scripts extends generic {}
@@ -116,7 +127,16 @@ export namespace Reflection {
             name: string
         }
 
-        export interface reset extends generic {}
+        export interface runtimes extends generic {
+            list: runtime[]
+        }
+
+        export interface kill_runtime extends generic {
+            name?: string,
+            id: number
+        }
+
+        export interface reset_runtimes extends generic {}
 
         export interface reload extends generic {
             script: string | boolean

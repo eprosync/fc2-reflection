@@ -3,7 +3,7 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -16,28 +16,48 @@
     "commands": [
       {
         "command": "fc2.auth",
-        "title": "fc2: Authenticate"
+        "title": "fc2: Authenticate",
+        "icon": "$(sync)"
       },
       {
         "command": "fc2.execute",
-        "title": "fc2: Execute"
+        "title": "fc2: Execute",
+        "icon": "$(play-circle)"
       },
       {
-        "command": "fc2.reset",
-        "title": "fc2: Reset"
+        "command": "fc2.runtimes.reset",
+        "title": "fc2: Kill All Runtimes",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "fc2.runtimes.kill",
+        "title": "Kill",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "fc2.runtimes.open",
+        "title": "Open",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "fc2.reload",
-        "title": "fc2: Reload"
+        "title": "fc2: Reload",
+        "icon": "$(sync)"
       },
       {
         "command": "fc2.scripts",
-        "title": "fc2: Scripts"
+        "title": "fc2: Scripts",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "fc2.runtimes",
+        "title": "fc2: Runtimes",
+        "icon": "$(sync)"
       },
       {
         "command": "fc2.copy",
         "title": "Copy",
-        "icon": "$(output-view-icon)"
+        "icon": "$(copy)"
       },
       {
         "command": "fc2.scripts.toggle",
@@ -51,24 +71,48 @@
       }
     ],
     "menus": {
+      "view/title": [
+          {
+              "command": "fc2.scripts",
+              "when": "view == fc2-scripts",
+              "group": "navigation"
+          },
+          {
+              "command": "fc2.runtimes",
+              "when": "view == fc2-runtime",
+              "group": "navigation"
+          },
+          {
+              "command": "fc2.auth",
+              "when": "view == fc2-session",
+              "group": "navigation"
+          }
+      ],
       "view/item/context": [
         {
           "command": "fc2.copy",
           "when": "viewItem == fc2Detail",
-          "group": "inline",
-          "icon": "$(copy)"
+          "group": "inline"
+        },
+        {
+          "command": "fc2.runtimes.kill",
+          "when": "viewItem == fc2RuntimeEntry",
+          "group": "inline"
+        },
+        {
+          "command": "fc2.runtimes.open",
+          "when": "viewItem == fc2RuntimeEntry",
+          "group": "inline"
         },
         {
           "command": "fc2.scripts.toggle",
           "when": "viewItem == fc2ScriptEntry",
-          "group": "inline",
-          "icon": "$(play-circle)"
+          "group": "inline"
         },
         {
           "command": "fc2.scripts.open",
           "when": "viewItem == fc2ScriptEntry",
-          "group": "inline",
-          "icon": "$(cloud-download)"
+          "group": "inline"
         }
       ]
     },
@@ -115,8 +159,12 @@
     "views": {
       "fc2-sidebar": [
         {
+          "id": "fc2-command",
+          "name": "Commands"
+        },
+        {
           "id": "fc2-runtime",
-          "name": "Runtime"
+          "name": "Runtimes"
         },
         {
           "id": "fc2-scripts",
