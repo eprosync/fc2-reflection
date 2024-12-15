@@ -12,27 +12,82 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
+        export const version = 0x001;
+        export let active: boolean = false;
+
+        export interface script {
+            author: string,
+            core: string,
+            elapsed: string,
+            enabled: boolean,
+            forums: string,
+            id: number,
+            last_bonus: string,
+            last_update: number,
+            library: string,
+            name: string,
+            script: string,
+            software: number,
+            team: string[],
+            update_notes: string
+        }
+
+        export interface session {
+            avatar: string,
+            directory: string,
+            fid: number,
+            is_media: number,
+            is_sdk: number,
+            level: number,
+            license: string,
+            link: number,
+            minimum_mode: number,
+            os: string,
+            posts: number,
+            protection: number,
+            score: number,
+            server: string,
+            superstar: number,
+            uid: number,
+            unlink: number,
+            unread_alerts: number,
+            unread_conversations: number,
+            username: string,
+        }
+
         export namespace Input {
             export type generic = {
-                command: string
+                command: string,
+                [key: string]: any
             }
+
+            export interface version extends generic {}
+            export interface session extends generic {}
 
             export interface execute extends generic {
                 name: string,
                 source: string
             }
-
             export interface reset extends generic {}
+            export interface reload extends generic {}
 
-            export interface reload extends generic {
-                script: string | boolean | undefined
+            export interface scripts extends generic {}
+            export interface script_toggle extends generic {
+                id: number
             }
         }
 
         export namespace Output {
             export interface generic {
-                command: string
+                command: string,
+                [key: string]: any
             }
+
+            export interface version extends generic {
+                version: number
+            }
+            
+            export interface session extends generic, Reflection.session {}
 
             export interface error extends generic {
                 name: string,
@@ -48,6 +103,14 @@ local json = require("json") -- lib_json
 
             export interface reload extends generic {
                 script: string | boolean
+            }
+
+            export interface scripts extends generic {
+                list: script[]
+            }
+
+            export interface script_toggle extends generic {
+                id: number
             }
         }
     }

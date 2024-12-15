@@ -29,48 +29,106 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-	export namespace Input {
-		export type generic = {
-			command: string
-		}
+    export const version = 0x001;
+    export let active: boolean = false;
 
-		export interface execute extends generic {
-			name: string,
-			source: string
-		}
+    export interface script {
+        author: string,
+        core: string,
+        elapsed: string,
+        enabled: boolean,
+        forums: string,
+        id: number,
+        last_bonus: string,
+        last_update: number,
+        library: string,
+        name: string,
+        script: string,
+        software: number,
+        team: string[],
+        update_notes: string
+    }
 
-		export interface reset extends generic {}
+    export interface session {
+        avatar: string,
+        directory: string,
+        fid: number,
+        is_media: number,
+        is_sdk: number,
+        level: number,
+        license: string,
+        link: number,
+        minimum_mode: number,
+        os: string,
+        posts: number,
+        protection: number,
+        score: number,
+        server: string,
+        superstar: number,
+        uid: number,
+        unlink: number,
+        unread_alerts: number,
+        unread_conversations: number,
+        username: string,
+    }
 
-		export interface reload extends generic {
-			script: string | boolean | undefined
-		}
-	}
+    export namespace Input {
+        export type generic = {
+            command: string,
+            [key: string]: any
+        }
 
-	export namespace Output {
-		export interface generic {
-			command: string
-		}
+        export interface version extends generic {}
+        export interface session extends generic {}
 
-		export interface error extends generic {
-			name: string,
-			type: string,
-			reason: string
-		}
+        export interface execute extends generic {
+            name: string,
+            source: string
+        }
+        export interface reset extends generic {}
+        export interface reload extends generic {}
 
-		export interface execute extends generic {
-			name: string
-		}
+        export interface scripts extends generic {}
+        export interface script_toggle extends generic {
+            id: number
+        }
+    }
 
-		export interface reset extends generic {}
+    export namespace Output {
+        export interface generic {
+            command: string,
+            [key: string]: any
+        }
 
-		export interface reload extends generic {
-			script: string | boolean
-		}
-	}
+        export interface version extends generic {
+            version: number
+        }
+        
+        export interface session extends generic, Reflection.session {}
+
+        export interface error extends generic {
+            name: string,
+            type: string,
+            reason: string
+        }
+
+        export interface execute extends generic {
+            name: string
+        }
+
+        export interface reset extends generic {}
+
+        export interface reload extends generic {
+            script: string | boolean
+        }
+
+        export interface scripts extends generic {
+            list: script[]
+        }
+
+        export interface script_toggle extends generic {
+            id: number
+        }
+    }
 }
 ```
-
-## What's Next
-We have experimental additions for scripts/session information to be displayed later on.\
-Right now we are very barebones for you to *regression hell* your sources.\
-Have fun.
