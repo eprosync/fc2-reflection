@@ -49,7 +49,7 @@ local json = require("json") -- lib_json
             solution: string,
             Constellation4?: config,
             Universe4?: config,
-            Reflection?: config_reflection,
+            Reflection?: config,
             [key: string]: config | undefined | string
         }
 

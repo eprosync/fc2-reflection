@@ -46,7 +46,7 @@ export namespace Reflection {
 		solution: string,
 		Constellation4?: config,
 		Universe4?: config,
-		Reflection?: config_reflection,
+		Reflection?: config,
 		[key: string]: config | undefined | string
 	}
 
@@ -692,7 +692,7 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 
 			const solution = this.configData.solution;
 			const configuration = this.configData[solution] as Reflection.config | undefined;
-			const reflection = this.configData.Reflection as Reflection.config_reflection | undefined;
+			const reflection = this.configData.Reflection as Reflection.config | undefined;
 			const built: fc2GenericItem[] = [];
 
 			if (configuration) {
