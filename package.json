@@ -3,7 +3,7 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.96.0"
   },
