@@ -171,6 +171,29 @@ local reflection = { -- for now :cry:
     delay = 1
 }
 
+local totable = string.ToTable
+local string_sub = string.sub
+local string_find = string.find
+local string_len = string.len
+local explode = function( separator, str, withpattern )
+	if ( separator == "" ) then return totable( str ) end
+	if ( withpattern == nil ) then withpattern = false end
+
+	local ret = {}
+	local current_pos = 1
+
+	for i = 1, string_len( str ) do
+		local start_pos, end_pos = string_find( str, separator, current_pos, not withpattern )
+		if ( not start_pos ) then break end
+		ret[ i ] = string_sub( str, current_pos, start_pos - 1 )
+		current_pos = end_pos + 1
+	end
+
+	ret[ #ret + 1 ] = string_sub( str, current_pos )
+
+	return ret
+end
+
 -- lil hack to get any events you want :)
 -- yes complain all you want
 local _event = ""
@@ -247,6 +270,68 @@ function reflection.on_loaded(script, session)
 
     print("[Reflection] pipe input: ", self.input)
     print("[Reflection] pipe output: ", self.output)
+
+    -- code --install-extension [path]
+    -- https://api.github.com/repos/eprosync/fc2-reflection/releases/latest
+    local result = fantasy.terminal("code --version")
+    if string.find(result, "'code' is not recognized") or string.find(result, "command not found") then
+        print("[Reflection] VSC not found") 
+    else
+        print("[Reflection] VSC - " .. explode("\n", result)[1])
+        local data = fantasy.terminal( "curl -H \"User-Agent: fc2-reflection/0.0.4\" https://api.github.com/repos/eprosync/fc2-reflection/releases/latest")
+        local ran, data = pcall(json.decode, data)
+        if ran then
+            local location = modules.file:current_directory() .. "\\reflection.vsix"
+            local cache = modules.file:current_directory() .. "\\reflection-extension.txt"
+            
+            local should = false
+            if modules.file:exists(cache) then
+                local ran, cache = pcall(json.decode, modules.file:read(cache))
+                if not ran then
+                    should = true
+                else
+                    if data.tag_name ~= cache.tag_name then
+                        should = true
+                    end
+                end
+            else
+                should = true
+            end
+    
+            if should then
+                print("[Reflection] Extension has a deviation on file, downloading...")
+                modules.file:write(cache, json.encode(data))
+                
+                local asset
+                local assets = data.assets
+                for i=1, #assets do
+                    local v = assets[i]
+                    if v.content_type == "application/vsix" then
+                        asset = v
+                        break
+                    end
+                end
+        
+                if asset then
+                    fantasy.terminal( "curl -L -H \"User-Agent: fc2-reflection/1.0\" " .. asset.browser_download_url .. " --output " .. location)
+                    print("[Reflection] Extension downloaded, installing...")
+                    local result = fantasy.terminal( "code --install-extension " .. location)
+                    if string.find(result, "Extension 'reflection.vsix' was successfully installed.") then
+                        print("[Reflection] VSC Extension Installed, you may reload your IDE to view changes")
+                    else
+                        print("[Reflection] Error installing VSC Extension, please check the error here:")
+                        print(result)
+                    end
+                else
+                    print("[Reflection] Unable to find latest fc2-reflection vsix release")
+                end
+            else
+                print("[Reflection] Looks like you are running the latest vsix release")
+            end
+        else
+            print("[Reflection] Unable to decode latest fc2-reflection release - " .. data)
+        end
+    end
 end
 
 function reflection.execute(source, name)
