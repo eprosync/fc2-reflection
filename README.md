@@ -29,126 +29,154 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-    export const version = 0x003;
-    export let active: boolean = false;
+	export const version = 0x004;
+	export let active: boolean = false;
 
-    export interface script {
-        author: string,
-        core: string,
-        elapsed: string,
-        enabled: boolean,
-        forums: string,
-        id: number,
-        last_bonus: string,
-        last_update: number,
-        library: string,
-        name: string,
-        script: string,
-        software: number,
-        team: string[],
-        update_notes: string
-    }
+	export interface script {
+		author: string,
+		core: string,
+		elapsed: string,
+		enabled: boolean,
+		forums: string,
+		id: number,
+		last_bonus: string,
+		last_update: number,
+		library: string,
+		name: string,
+		script: string,
+		software: number,
+		team: string[],
+		update_notes: string
+	}
 
-    export interface runtime {
-        name: string,
-        source: string,
-        time: number,
-        id: number
-    }
+	export interface runtime {
+		name: string,
+		source: string,
+		time: number,
+		id: number
+	}
 
-    export interface session {
-        avatar: string,
-        directory: string,
-        fid: number,
-        is_media: number,
-        is_sdk: number,
-        level: number,
-        license: string,
-        link: number,
-        minimum_mode: number,
-        os: string,
-        posts: number,
-        protection: number,
-        score: number,
-        server: string,
-        superstar: number,
-        uid: number,
-        unlink: number,
-        unread_alerts: number,
-        unread_conversations: number,
-        username: string,
-    }
+	export interface config {
+		[key: string]: {
+			[key: string]: boolean | number | string
+		}
+	}
 
-    export namespace Input {
-        export type generic = {
-            command: string,
-            [key: string]: any
-        }
+	export interface configs {
+		solution: string,
+		Constellation4?: config,
+		Universe4?: config,
+		Reflection?: config_reflection,
+		[key: string]: config | undefined | string
+	}
 
-        export interface version extends generic {}
-        export interface session extends generic {}
+	export interface session {
+		avatar: string,
+		directory: string,
+		fid: number,
+		is_media: number,
+		is_sdk: number,
+		level: number,
+		license: string,
+		link: number,
+		minimum_mode: number,
+		os: string,
+		posts: number,
+		protection: number,
+		score: number,
+		server: string,
+		superstar: number,
+		uid: number,
+		unlink: number,
+		unread_alerts: number,
+		unread_conversations: number,
+		username: string,
+	}
 
-        export interface execute extends generic {
-            name: string,
-            source: string
-        }
-        export interface runtimes extends generic {}
-        export interface kill_runtime extends generic {
-            id: number
-        }
-        export interface reset_runtimes extends generic {}
-        export interface reload extends generic {}
+	export namespace Input {
+		export type generic = {
+			command: string,
+			[key: string]: any
+		}
 
-        export interface scripts extends generic {}
-        export interface script_toggle extends generic {
-            id: number
-        }
-    }
+		export interface version extends generic {}
+		export interface session extends generic {}
+		export interface reload extends generic {}
 
-    export namespace Output {
-        export interface generic {
-            command: string,
-            [key: string]: any
-        }
+		export interface execute extends generic {
+			name: string,
+			source: string
+		}
+		export interface runtimes extends generic {}
+		export interface runtimes_reset extends generic {}
+		export interface runtime_kill extends generic {
+			id: number
+		}
 
-        export interface version extends generic {
-            version: number
-        }
-        
-        export interface session extends generic, Reflection.session {}
+		export interface scripts extends generic {}
+		export interface script_toggle extends generic {
+			id: number
+		}
 
-        export interface error extends generic {
-            name: string,
-            type: string,
-            reason: string
-        }
+		export interface configs extends generic {}
+		export interface config_update extends generic {
+			solution: string,
+			runtime: number,
+			script: string,
+			key: string,
+			value: boolean | number | string,
+			type: "boolean" | "number" | "string"
+		}
+	}
 
-        export interface execute extends generic {
-            name: string
-        }
+	export namespace Output {
+		export interface generic {
+			command: string,
+			[key: string]: any
+		}
 
-        export interface runtimes extends generic {
-            list: runtime[]
-        }
+		export interface error extends generic {
+			name: string,
+			type: string,
+			reason: string
+		}
 
-        export interface kill_runtime extends generic {
-            name?: string,
-            id: number
-        }
+		export interface version extends generic {
+			version: number
+		}
+		export interface reload extends generic {
+			script: string | boolean
+		}
+		export interface session extends generic, Reflection.session {}
 
-        export interface reset_runtimes extends generic {}
+		export interface execute extends generic {
+			name: string
+		}
+		export interface runtimes extends generic {
+			list: runtime[]
+		}
+		export interface runtime_kill extends generic {
+			name?: string,
+			id: number
+		}
+		export interface runtimes_reset extends generic {}
 
-        export interface reload extends generic {
-            script: string | boolean
-        }
+		export interface scripts extends generic {
+			list: script[]
+		}
+		export interface script_toggle extends generic {
+			id: number
+		}
 
-        export interface scripts extends generic {
-            list: script[]
-        }
-
-        export interface script_toggle extends generic {
-            id: number
-        }
-    }
+		export interface configs extends generic, Reflection.configs {}
+		export interface config_update extends generic {
+			solution: string,
+			runtime: number,
+			script: string,
+			key: string,
+			value: boolean | number | string,
+			type: string
+		}
+	}
 }
 ```

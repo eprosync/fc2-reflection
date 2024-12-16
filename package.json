@@ -55,6 +55,11 @@
         "icon": "$(sync)"
       },
       {
+        "command": "fc2.configs",
+        "title": "fc2: Configs",
+        "icon": "$(sync)"
+      },
+      {
         "command": "fc2.copy",
         "title": "Copy",
         "icon": "$(copy)"
@@ -68,13 +73,23 @@
         "command": "fc2.scripts.open",
         "title": "Open",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "fc2.configs.update",
+        "title": "Update",
+        "icon": "$(play-circle)"
       }
     ],
     "menus": {
       "view/title": [
           {
               "command": "fc2.scripts",
-              "when": "view == fc2-scripts",
+              "when": "view == fc2-script",
+              "group": "navigation"
+          },
+          {
+              "command": "fc2.configs",
+              "when": "view == fc2-config",
               "group": "navigation"
           },
           {
@@ -91,7 +106,12 @@
       "view/item/context": [
         {
           "command": "fc2.copy",
-          "when": "viewItem == fc2Detail",
+          "when": "viewItem == fc2Detail || viewItem == fc2ConfigEntry || viewItem == fc2ConfigFileEntry || viewItem == fc2ConfigDataEntry",
+          "group": "inline"
+        },
+        {
+          "command": "fc2.configs.update",
+          "when": "viewItem == fc2ConfigDataEntry",
           "group": "inline"
         },
         {
@@ -167,7 +187,11 @@
           "name": "Runtimes"
         },
         {
-          "id": "fc2-scripts",
+          "id": "fc2-config",
+          "name": "Configs"
+        },
+        {
+          "id": "fc2-script",
           "name": "Scripts"
         },
         {

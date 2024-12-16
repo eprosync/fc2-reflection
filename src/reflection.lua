@@ -4,6 +4,7 @@ local json = require("json") -- lib_json
     FC2 - Reflection
     A simple (and terrible) lua helper, to help you develop stuff.
     Because reloading all lua files is not an option for me - WholeCream
+    Source: https://github.com/eprosync/fc2-reflection
 
     There are two modes: HTTP and PIPE
     HTTP - uses on_http_request to handle information
@@ -11,7 +12,7 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
-        export const version = 0x001;
+        export const version = 0x004;
         export let active: boolean = false;
 
         export interface script {
@@ -36,6 +37,20 @@ local json = require("json") -- lib_json
             source: string,
             time: number,
             id: number
+        }
+
+        export interface config {
+            [key: string]: {
+                [key: string]: boolean | number | string
+            }
+        }
+
+        export interface configs {
+            solution: string,
+            Constellation4?: config,
+            Universe4?: config,
+            Reflection?: config_reflection,
+            [key: string]: config | undefined | string
         }
 
         export interface session {
@@ -69,21 +84,31 @@ local json = require("json") -- lib_json
 
             export interface version extends generic {}
             export interface session extends generic {}
+            export interface reload extends generic {}
 
             export interface execute extends generic {
                 name: string,
                 source: string
             }
             export interface runtimes extends generic {}
-            export interface kill_runtime extends generic {
+            export interface runtimes_reset extends generic {}
+            export interface runtime_kill extends generic {
                 id: number
             }
-            export interface reset_runtimes extends generic {}
-            export interface reload extends generic {}
 
             export interface scripts extends generic {}
             export interface script_toggle extends generic {
                 id: number
+            }
+
+            export interface configs extends generic {}
+            export interface config_update extends generic {
+                solution: string,
+                runtime: number,
+                script: string,
+                key: string,
+                value: boolean | number | string,
+                type: "boolean" | "number" | "string"
             }
         }
 
@@ -93,49 +118,53 @@ local json = require("json") -- lib_json
                 [key: string]: any
             }
 
-            export interface version extends generic {
-                version: number
-            }
-            
-            export interface session extends generic, Reflection.session {}
-
             export interface error extends generic {
                 name: string,
                 type: string,
                 reason: string
             }
 
-            export interface execute extends generic {
-                name: string
+            export interface version extends generic {
+                version: number
             }
-
-            export interface runtimes extends generic {
-                list: runtime[]
-            }
-
-            export interface kill_runtime extends generic {
-                name?: string,
-                id: number
-            }
-
-            export interface reset_runtimes extends generic {}
-
             export interface reload extends generic {
                 script: string | boolean
             }
+            export interface session extends generic, Reflection.session {}
+
+            export interface execute extends generic {
+                name: string
+            }
+            export interface runtimes extends generic {
+                list: runtime[]
+            }
+            export interface runtime_kill extends generic {
+                name?: string,
+                id: number
+            }
+            export interface runtimes_reset extends generic {}
 
             export interface scripts extends generic {
                 list: script[]
             }
-
             export interface script_toggle extends generic {
                 id: number
+            }
+
+            export interface configs extends generic, Reflection.configs {}
+            export interface config_update extends generic {
+                solution: string,
+                runtime: number,
+                script: string,
+                key: string,
+                value: boolean | number | string,
+                type: string
             }
         }
     }
 ]]
 
-local reflection_version = 0x003
+local reflection_version = 0x004
 local reflection = { -- for now :cry:
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",
@@ -309,6 +338,137 @@ function reflection.command(chunk)
                 reason = err
             }
         end
+    elseif command == "configs" then
+        local dataset = json.decode(modules.configuration:get_local())
+        dataset.command = "configs"
+
+        local runtimes = self.runtimes
+        local t = {}
+
+        -- generated runtime configurations
+        for i=1, #runtimes do
+            local runtime = runtimes[i]
+            local handle = runtime.self
+            local data = {}
+            for k, v in pairs(handle) do
+                local ktype = type(k)
+                local ntype = type(v)
+                if ktype == "string" and (ntype == "number" or ntype == "string" or ntype == "boolean") then
+                    data[k] = v
+                end
+            end
+            t[runtime.script.name .. "#" .. runtime.script.id] = data -- for some reason json parser doesn't like numbers not in iteration
+        end
+
+        dataset.solution = fantasy.solution
+        dataset.Reflection = t
+
+        return dataset
+    elseif command == "config_update" then
+        local solution = chunk.solution
+        local runtime_id = chunk.runtime
+        local script = chunk.script
+        local key = chunk.key
+        local value = chunk.value
+        local datatype = chunk.type
+
+        if runtime_id and runtime_id ~= 0 then
+            if type(runtime_id) ~= "number" then
+                return  {
+                    command = "error",
+                    name = self.script.name,
+                    type = "config_update",
+                    reason = "id is not a number"
+                }
+            end
+
+            local runtimes = self.runtimes
+            local dataset
+            for i=1, #runtimes do
+                local runtime = runtimes[i]
+                if runtime.script.id == runtime_id then
+                    dataset = runtime
+                    break
+                end
+            end
+
+            if not dataset then
+                return {
+                    command = "error",
+                    name = self.script.name,
+                    type = "config_update",
+                    reason = "cannot change invalid runtime '" .. runtime_id .. "'"
+                }
+            end
+
+            dataset = dataset.self
+
+            if dataset[key] == nil then
+                return {
+                    command = "error",
+                    name = self.script.name,
+                    type = "config_update",
+                    reason = "runtime '" .. runtime_id .. "' doesn't seem to have configuration key '" .. key .. "'"
+                }
+            end
+
+            if datatype ~= type(dataset[key]) then
+                return {
+                    command = "error",
+                    name = self.script.name,
+                    type = "config_update",
+                    reason = "runtime '" .. runtime_id .. "' datatype doesn't match from '" .. key .. "' > " .. datatype .. " - " .. type(dataset[key])
+                }
+            end
+
+            dataset[key] = value
+
+            return chunk
+        end
+
+        local base = json.decode(modules.configuration:get_local())
+        local dataset = base[solution]
+        if not dataset then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "config_update",
+                reason = "cannot change invalid solution '" .. solution .. "'"
+            }
+        end
+
+        dataset = dataset[script]
+        if not dataset then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "config_update",
+                reason = "cannot change invalid script '" .. script .. "'"
+            }
+        end
+
+        if dataset[key] == nil then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "config_update",
+                reason = "script '" .. script .. "' doesn't seem to have configuration key '" .. key .. "'"
+            }
+        end
+
+        if datatype ~= type(dataset[key]) then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "config_update",
+                reason = "script '" .. script .. "' datatype doesn't match from '" .. key .. "' > " .. datatype .. " - " .. type(dataset[key])
+            }
+        end
+
+        dataset[key] = value
+        modules.configuration:overwrite(json.encode(base))
+
+        return chunk
     elseif command == "runtimes" then
         local runtimes = self.runtimes
         local t = {}
@@ -325,19 +485,19 @@ function reflection.command(chunk)
             command = "runtimes",
             list = t
         }
-    elseif command == "reset_runtimes" then
+    elseif command == "runtimes_reset" then
         self.runtimes = {}
         print("[Reflection] Runtimes have been killed")
         return {
-            command = "reset_runtimes"
+            command = "runtimes_reset"
         }
-    elseif command == "kill_runtime" then
+    elseif command == "runtime_kill" then
         local id = chunk.id
         if not type(id) == "number" then
             return {
                 command = "error",
                 name = self.script.name,
-                type = "kill_runtime",
+                type = "runtime_kill",
                 reason = "id is not a number"
             }
         end
@@ -350,7 +510,7 @@ function reflection.command(chunk)
                 print("[Reflection] " .. nameid .. " killed")
                 table.remove(runtimes, i)
                 return {
-                    command = "kill_runtime",
+                    command = "runtime_kill",
                     name = runtime.script.name,
                     id = id
                 }
@@ -358,7 +518,7 @@ function reflection.command(chunk)
         end
 
         return {
-            command = "kill_runtime",
+            command = "runtime_kill",
             id = id
         }
     elseif command == "reload" then

@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
 import fs from "fs";
 
+/*
+    FC2 - Reflection
+    A simple (and terrible) lua helper, to help you develop stuff.
+    Because reloading all lua files is not an option for me - WholeCream
+    Source: https://github.com/eprosync/fc2-reflection
+*/
+
 export namespace Reflection {
-	export const version = 0x003;
+	export const version = 0x004;
 	export let active: boolean = false;
 
 	export interface script {
@@ -27,6 +34,20 @@ export namespace Reflection {
 		source: string,
 		time: number,
 		id: number
+	}
+
+	export interface config {
+		[key: string]: {
+			[key: string]: boolean | number | string
+		}
+	}
+
+	export interface configs {
+		solution: string,
+		Constellation4?: config,
+		Universe4?: config,
+		Reflection?: config_reflection,
+		[key: string]: config | undefined | string
 	}
 
 	export interface session {
@@ -60,21 +81,31 @@ export namespace Reflection {
 
 		export interface version extends generic {}
 		export interface session extends generic {}
+		export interface reload extends generic {}
 
 		export interface execute extends generic {
 			name: string,
 			source: string
 		}
 		export interface runtimes extends generic {}
-		export interface kill_runtime extends generic {
+		export interface runtimes_reset extends generic {}
+		export interface runtime_kill extends generic {
 			id: number
 		}
-		export interface reset_runtimes extends generic {}
-		export interface reload extends generic {}
 
 		export interface scripts extends generic {}
 		export interface script_toggle extends generic {
 			id: number
+		}
+
+		export interface configs extends generic {}
+		export interface config_update extends generic {
+			solution: string,
+			runtime: number,
+			script: string,
+			key: string,
+			value: boolean | number | string,
+			type: "boolean" | "number" | "string"
 		}
 	}
 
@@ -84,43 +115,47 @@ export namespace Reflection {
 			[key: string]: any
 		}
 
-		export interface version extends generic {
-			version: number
-		}
-		
-		export interface session extends generic, Reflection.session {}
-
 		export interface error extends generic {
 			name: string,
 			type: string,
 			reason: string
 		}
 
-		export interface execute extends generic {
-			name: string
+		export interface version extends generic {
+			version: number
 		}
-
-		export interface runtimes extends generic {
-			list: runtime[]
-		}
-
-		export interface kill_runtime extends generic {
-			name?: string,
-			id: number
-		}
-
-		export interface reset_runtimes extends generic {}
-
 		export interface reload extends generic {
 			script: string | boolean
 		}
+		export interface session extends generic, Reflection.session {}
+
+		export interface execute extends generic {
+			name: string
+		}
+		export interface runtimes extends generic {
+			list: runtime[]
+		}
+		export interface runtime_kill extends generic {
+			name?: string,
+			id: number
+		}
+		export interface runtimes_reset extends generic {}
 
 		export interface scripts extends generic {
 			list: script[]
 		}
-
 		export interface script_toggle extends generic {
 			id: number
+		}
+
+		export interface configs extends generic, Reflection.configs {}
+		export interface config_update extends generic {
+			solution: string,
+			runtime: number,
+			script: string,
+			key: string,
+			value: boolean | number | string,
+			type: string
 		}
 	}
 }
@@ -147,7 +182,6 @@ async function http(port: number, data: {[index: string | number]: any}): Promis
     }
 }
 
-// Create an EventEmitter to handle custom events
 const fc2Event: vscode.EventEmitter<Reflection.Output.generic> = new vscode.EventEmitter<Reflection.Output.generic>();
 
 function fc2Handle(element: Reflection.Output.generic) {
@@ -159,15 +193,19 @@ function fc2Handle(element: Reflection.Output.generic) {
                 Reflection.active = true;
 
 				fc2Command({
-					command: "scripts"
-				});
-
-				fc2Command({
 					command: "session"
 				});
 
 				fc2Command({
+					command: "scripts"
+				});
+
+				fc2Command({
 					command: "runtimes"
+				});
+
+				fc2Command({
+					command: "configs"
 				});
 
 				const config = vscode.workspace.getConfiguration("fc2.reflection");
@@ -191,22 +229,34 @@ function fc2Handle(element: Reflection.Output.generic) {
 			fc2Command({
 				command: "runtimes"
 			});
+
+			fc2Command({
+				command: "configs"
+			});
             break;
-		case "kill_runtime":
-            const kill_runtime = element as Reflection.Output.kill_runtime;
-			if (kill_runtime.name) {
-				vscode.window.showInformationMessage(`fc2: Runtime '${kill_runtime.name}'#${kill_runtime.id} has been killed`);
+		case "runtime_kill":
+            const runtime_kill = element as Reflection.Output.runtime_kill;
+			if (runtime_kill.name) {
+				vscode.window.showInformationMessage(`fc2: Runtime '${runtime_kill.name}'#${runtime_kill.id} has been killed`);
 				fc2Command({
 					command: "runtimes"
 				});
+
+				fc2Command({
+					command: "configs"
+				});
 			} else {
-				vscode.window.showInformationMessage(`fc2: Runtime ${kill_runtime.id} doesn't exist`);
+				vscode.window.showInformationMessage(`fc2: Runtime ${runtime_kill.id} doesn't exist`);
 			}
 			break;
-        case "reset_runtimes":
+        case "runtimes_reset":
             vscode.window.showInformationMessage("fc2: Runtimes have been killed");
 			fc2Command({
 				command: "runtimes"
+			});
+
+			fc2Command({
+				command: "configs"
 			});
             break;
         case "reload":
@@ -228,6 +278,13 @@ function fc2Handle(element: Reflection.Output.generic) {
                 command: "scripts"
             });
             break;
+		case "config_update":
+			const config_update = element as Reflection.Output.config_update;
+			vscode.window.showInformationMessage(`fc2: Script '${config_update.script}' config has been update`);
+			fc2Command({
+				command: "configs"
+			});
+			break;
     }
 
     fc2Event.fire(element);
@@ -341,7 +398,7 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 				return [
 					new fc2ScriptsItem(`Loading...`, vscode.TreeItemCollapsibleState.None, undefined, {
 						contextValue: 'fc2Generic',
-						icon: "sync"
+						icon: 'sync'
 					})
 				];
 			}
@@ -408,7 +465,7 @@ class fc2GenericItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		options?: { contextValue?: string; command?: vscode.Command; entry?: any; metadata?: Reflection.runtime, clipboard?: string, icon?: string }
+		options?: { contextValue?: string; command?: vscode.Command; entry?: any; metadata?: any, clipboard?: string, icon?: string }
 	) {
 		super(label, collapsibleState);
 		if (options) {
@@ -445,7 +502,7 @@ class fc2RuntimeTree implements vscode.TreeDataProvider<fc2GenericItem> {
 				return [
 					new fc2GenericItem(`No Runtimes...`, vscode.TreeItemCollapsibleState.None, {
 						contextValue: 'fc2Generic',
-						icon: "sync"
+						icon: 'sync'
 					})
 				];
 			}
@@ -497,7 +554,7 @@ class fc2SessionTree implements vscode.TreeDataProvider<fc2GenericItem> {
 
 	private sessionData: Reflection.session | undefined;
 
-	update(data: Reflection.session): void {
+	update(data: Reflection.session | undefined): void {
 		this.sessionData = data;
 		this._onDidChangeTreeData.fire();
 	}
@@ -512,7 +569,7 @@ class fc2SessionTree implements vscode.TreeDataProvider<fc2GenericItem> {
 			return [
 				new fc2GenericItem(`Loading...`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Generic',
-					icon: "sync"
+					icon: 'sync'
 				})
 			];
 		}
@@ -578,7 +635,7 @@ class fc2CommandTree implements vscode.TreeDataProvider<fc2GenericItem> {
 				}),
 				new fc2GenericItem(`Reload Scripts`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Command',
-					icon: "sync",
+					icon: 'sync',
 					command: {
 						command: "fc2.reload",
 						arguments: [],
@@ -587,7 +644,7 @@ class fc2CommandTree implements vscode.TreeDataProvider<fc2GenericItem> {
 				}),
 				new fc2GenericItem(`Reconnect & Authenticate`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Command',
-					icon: "sync",
+					icon: 'sync',
 					command: {
 						command: "fc2.auth",
 						arguments: [],
@@ -605,6 +662,161 @@ class fc2CommandTree implements vscode.TreeDataProvider<fc2GenericItem> {
 	}
 }
 
+class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
+	private _onDidChangeTreeData: vscode.EventEmitter<fc2GenericItem | undefined | void> =
+		new vscode.EventEmitter<fc2GenericItem | undefined | void>();
+	readonly onDidChangeTreeData: vscode.Event<fc2GenericItem | undefined | void> =
+		this._onDidChangeTreeData.event;
+
+	private configData: Reflection.configs | undefined;
+
+	update(data: Reflection.configs | undefined): void {
+		this.configData = data;
+		this._onDidChangeTreeData.fire();
+	}
+
+	getTreeItem(element: fc2GenericItem): vscode.TreeItem {
+		return element;
+	}
+
+	getChildren(element?: fc2GenericItem): fc2GenericItem[] {
+		if (!element) {
+			if (!this.configData) {
+				return [
+					new fc2GenericItem(`Loading...`, vscode.TreeItemCollapsibleState.None, {
+						contextValue: 'fc2Generic',
+						icon: 'sync'
+					})
+				];
+			}
+
+			const solution = this.configData.solution;
+			const configuration = this.configData[solution] as Reflection.config | undefined;
+			const reflection = this.configData.Reflection as Reflection.config_reflection | undefined;
+			const built: fc2GenericItem[] = [];
+
+			if (configuration) {
+				built.push(
+					new fc2GenericItem(solution, vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2ConfigEntry',
+						entry: configuration,
+						clipboard: solution
+					})
+				);
+			}
+
+			if (reflection) {
+				built.push(
+					new fc2GenericItem('Reflection', vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2ConfigEntry',
+						entry: reflection,
+						clipboard: 'Reflection'
+					})
+				);
+			}
+
+			if (built.length === 0) {
+				return [
+					new fc2GenericItem(`No Configurations`, vscode.TreeItemCollapsibleState.None, {
+						contextValue: 'fc2Generic',
+						icon: 'sync'
+					})
+				];
+			}
+
+			return built;
+		}
+
+		if (element && this.configData) {
+			const entry: {[index: string]: boolean | number | string} = element.entry;
+			if (element.contextValue === "fc2ConfigEntry") { // File
+				const configuration = element.entry as Reflection.config | undefined;
+				const built: fc2GenericItem[] = [];
+
+				for (let script in configuration) {
+					let store = configuration[script];
+					
+					built.push(
+						new fc2GenericItem(script, vscode.TreeItemCollapsibleState.Collapsed, {
+							contextValue: 'fc2ConfigFileEntry',
+							entry: store,
+							metadata: script,
+							clipboard: script
+						})
+					);
+				}
+
+				if (built.length === 0) {
+					return [
+						new fc2GenericItem(`No Configurations`, vscode.TreeItemCollapsibleState.None, {
+							contextValue: 'fc2Generic',
+							icon: 'sync'
+						})
+					];
+				}
+				
+				return built;
+			} else if (element.contextValue === "fc2ConfigFileEntry") { // Script Config
+				const configuration = element.entry as {
+					[key: string]: boolean | number | string
+				};
+
+				const identity = element.metadata as string;
+				let name = identity;
+				let id = 0;
+				let solution = this.configData.solution;
+				
+				if (/#\d+$/.exec(identity)) {
+					const id_ = identity.split("#"); // NOTE: if this becomes a problem I'll switch it to regex captures if I can
+					name = id_[0];
+					id = Number(id_[1]);
+					solution = "Reflection";
+				}
+
+				const built: fc2GenericItem[] = [];
+				for (let key in configuration) {
+					let value = configuration[key];
+					
+					let metadata: Reflection.Output.config_update = {
+						command: "config_update",
+						solution: solution,
+						script: name,
+						type: typeof value,
+						runtime: id,
+						key: key,
+						value: value
+					};
+
+					built.push(
+						new fc2GenericItem(`${key} = ${value}`, vscode.TreeItemCollapsibleState.None, {
+							contextValue: 'fc2ConfigDataEntry',
+							entry: metadata,
+							clipboard: `${key} = ${value}`
+						})
+					);
+				}
+
+				if (built.length === 0) {
+					return [
+						new fc2GenericItem(`No Configuration`, vscode.TreeItemCollapsibleState.None, {
+							contextValue: 'fc2Generic',
+							icon: 'sync'
+						})
+					];
+				}
+
+				return built;
+			}
+		}
+
+		return [];
+	}
+
+	getData(): Reflection.configs | undefined {
+		return this.configData;
+	}
+}
+
 let timeout: NodeJS.Timeout | undefined;
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
@@ -618,6 +830,64 @@ export function activate(context: vscode.ExtensionContext) {
 	// Panel - Commands
 	const fc2CommandProvider = new fc2CommandTree();
 	vscode.window.registerTreeDataProvider('fc2-command', fc2CommandProvider);
+	
+	// Panel - Configs
+	const fc2ConfigProvider = new fc2ConfigTree();
+	vscode.window.registerTreeDataProvider('fc2-config', fc2ConfigProvider);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs.update', async (entry: fc2GenericItem) => {
+			const dataset = entry.entry as Reflection.Output.config_update | undefined;
+			if (!dataset) {return;}
+
+			if (dataset.type === "boolean") {
+				if (dataset.value === true) {
+					dataset.value = false;
+				} else {
+					dataset.value = true;
+				}
+				fc2Command(dataset);
+				return;
+			}
+			
+			const input = await vscode.window.showInputBox({
+				prompt: `Change - ${entry.label} [type: ${dataset.type}]`,
+				placeHolder: `${dataset.value}`
+			});
+
+			if (!input || input.length === 0) {
+				vscode.window.showErrorMessage(`fc2: Invalid configuration input datatype ${dataset.type}`);
+				return;
+			}
+
+			switch (dataset.type) {
+				case 'number':
+					const number = Number(input);
+					if (isNaN(number) || input.trim() === '') {
+						vscode.window.showErrorMessage(`fc2: Invalid input for type ${dataset.type}, should be a valid number`);
+						return;
+					}
+					dataset.value = number;
+					fc2Command(dataset);
+					return;
+				case 'string':
+					dataset.value = input;
+					fc2Command(dataset);
+					return;
+			}
+
+			vscode.window.showErrorMessage(`fc2: Unknown configuration datatype ${dataset.type}`);
+		})
+	);
+
+	fc2Event.event((element: Reflection.Output.generic) => {
+		switch (element.command) {
+			case "configs":
+				const configs = element as Reflection.Output.configs;
+				fc2ConfigProvider.update(configs);
+				break;
+		}
+    });
 	
 	// Panel - Runtimes
 	const fc2RuntimeProvider = new fc2RuntimeTree();
@@ -653,7 +923,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const metadata = entry.metadata as (Reflection.runtime | undefined);
 			if (!metadata) {return;}
 			fc2Command({
-				command: "kill_runtime",
+				command: "runtime_kill",
 				id: metadata.id
 			});
 		})
@@ -674,7 +944,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Panel - Scripts
 	const fc2ScriptsProvider = new fc2ScriptsTree();
-	vscode.window.registerTreeDataProvider('fc2-scripts', fc2ScriptsProvider);
+	vscode.window.registerTreeDataProvider('fc2-script', fc2ScriptsProvider);
 
 	fc2Event.event((element: Reflection.Output.generic) => {
 		switch (element.command) {
@@ -715,6 +985,10 @@ export function activate(context: vscode.ExtensionContext) {
 	// Commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fc2.auth', () => {
+			fc2SessionProvider.update(undefined);
+			fc2RuntimeProvider.update([]);
+			fc2ScriptsProvider.update([]);
+			fc2ConfigProvider.update(undefined);
 			fc2Command({
 				command: "version",
 			}).catch((error) => {
@@ -754,26 +1028,34 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fc2.runtimes.reset', () => {
 			fc2Command({
-				command: "reset_runtimes",
-				script: true
+				command: "runtimes_reset"
 			});
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fc2.scripts', () => {
+			fc2ScriptsProvider.update([]);
 			fc2Command({
-				command: "scripts",
-				script: true
+				command: "scripts"
 			});
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fc2.runtimes', () => {
+			fc2RuntimeProvider.update([]);
 			fc2Command({
-				command: "runtimes",
-				script: true
+				command: "runtimes"
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs', () => {
+			fc2ConfigProvider.update(undefined);
+			fc2Command({
+				command: "configs"
 			});
 		})
 	);
