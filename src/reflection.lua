@@ -254,38 +254,42 @@ function reflection.event(...)
     end
 end
 
-function reflection.on_loaded(script, session)
-    local self = reflection
-    self.session = session
-    self.script = script
-    modules.file:write(self.input, "")
-    modules.file:write(self.output, "")
-    print("[Reflection] solution: ", fantasy.solution)
-
-    if fantasy.solution == "Universe4" then
-        print("[Reflection] http: http://localhost:9282/luar")
-    else
-        print("[Reflection] http: http://localhost:9283/luar")
-    end
-
-    print("[Reflection] pipe input: ", self.input)
-    print("[Reflection] pipe output: ", self.output)
-
+function reflection.vsc_download()
     -- code --install-extension [path]
+    -- code --list-extensions --show-versions
     -- https://api.github.com/repos/eprosync/fc2-reflection/releases/latest
     local result = fantasy.terminal("code --version")
     if string.find(result, "'code' is not recognized") or string.find(result, "command not found") then
         print("[Reflection] VSC not found") 
     else
         print("[Reflection] VSC - " .. explode("\n", result)[1])
+
+        print("[Reflection] Looking for extensions...")
         local data = fantasy.terminal( "curl -H \"User-Agent: fc2-reflection/0.0.4\" https://api.github.com/repos/eprosync/fc2-reflection/releases/latest")
         local ran, data = pcall(json.decode, data)
         if ran then
             local location = modules.file:current_directory() .. "\\reflection.vsix"
             local cache = modules.file:current_directory() .. "\\reflection-extension.txt"
             
-            local should = false
-            if modules.file:exists(cache) then
+
+            local extensions = fantasy.terminal( "code --list-extensions --show-versions" )
+            extensions = explode("\n", extensions)
+            
+            local installed = "none"
+            for i=1, #extensions do
+                local entry = extensions[i]
+                local version = string.match(entry, "wholecream.fc2%-reflection@(%d+%.%d+%.%d+)$")
+                if version then
+                    installed = version
+                end
+            end
+    
+            if installed ~= data.tag_name then
+                print("[Reflection] VSC installed extension deviates from file")
+                should = true
+            end
+
+            if not should and modules.file:exists(cache) then
                 local ran, cache = pcall(json.decode, modules.file:read(cache))
                 if not ran then
                     should = true
@@ -294,12 +298,16 @@ function reflection.on_loaded(script, session)
                         should = true
                     end
                 end
+
+                if should then
+                    print("[Reflection] Extension has a deviation on file")
+                end
             else
                 should = true
             end
     
             if should then
-                print("[Reflection] Extension has a deviation on file, downloading...")
+                print("[Reflection] Downloading...")
                 modules.file:write(cache, json.encode(data))
                 
                 local asset
@@ -332,6 +340,26 @@ function reflection.on_loaded(script, session)
             print("[Reflection] Unable to decode latest fc2-reflection release - " .. data)
         end
     end
+end
+
+function reflection.on_loaded(script, session)
+    local self = reflection
+    self.session = session
+    self.script = script
+    modules.file:write(self.input, "")
+    modules.file:write(self.output, "")
+    print("[Reflection] solution: ", fantasy.solution)
+
+    if fantasy.solution == "Universe4" then
+        print("[Reflection] http: http://localhost:9282/luar")
+    else
+        print("[Reflection] http: http://localhost:9283/luar")
+    end
+
+    print("[Reflection] pipe input: ", self.input)
+    print("[Reflection] pipe output: ", self.output)
+
+    reflection.vsc_download()
 end
 
 function reflection.execute(source, name)
