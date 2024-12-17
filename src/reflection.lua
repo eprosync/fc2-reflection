@@ -389,12 +389,13 @@ function reflection.on_loaded(script, session)
         local found = false
         local processes = modules.process:list()
         for k, v in pairs(processes) do
-            if v.name == "code.exe" or v.name == "code" then
+            if v.name:lower() == "code.exe" or v.name:lower() == "code" then
                 found = true
                 break
             end
         end
         if not found then
+            print("[Reflection] VSCode is not running, opening...")
             fantasy.terminal("code")
         end
     end
