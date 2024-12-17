@@ -12,7 +12,7 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
-        export const version = 0x004;
+        export const version = 0x005;
         export let active: boolean = false;
 
         export interface script {
@@ -164,7 +164,7 @@ local json = require("json") -- lib_json
     }
 ]]
 
-local reflection_version = 0x004
+local reflection_version = 0x005
 local reflection = { -- for now :cry:
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",

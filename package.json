@@ -3,7 +3,7 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -106,7 +106,7 @@
       "view/item/context": [
         {
           "command": "fc2.copy",
-          "when": "viewItem == fc2Detail || viewItem == fc2ConfigEntry || viewItem == fc2ConfigFileEntry || viewItem == fc2ConfigDataEntry",
+          "when": "viewItem == fc2Detail || viewItem == fc2ConfigEntry || viewItem == fc2ConfigFileEntry || viewItem == fc2ConfigDataEntry || viewItem == fc2ScriptModulesEntry",
           "group": "inline"
         },
         {
@@ -126,12 +126,12 @@
         },
         {
           "command": "fc2.scripts.toggle",
-          "when": "viewItem == fc2ScriptEntry",
+          "when": "viewItem == fc2ScriptEntry || viewItem == fc2ScriptModuleEntry",
           "group": "inline"
         },
         {
           "command": "fc2.scripts.open",
-          "when": "viewItem == fc2ScriptEntry",
+          "when": "viewItem == fc2ScriptEntry || viewItem == fc2ScriptModuleEntry",
           "group": "inline"
         }
       ]

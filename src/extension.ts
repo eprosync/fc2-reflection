@@ -9,7 +9,7 @@ import fs from "fs";
 */
 
 export namespace Reflection {
-	export const version = 0x004;
+	export const version = 0x005;
 	export let active: boolean = false;
 
 	export interface script {
@@ -348,29 +348,39 @@ function fc2Command(data: Reflection.Input.generic): Promise<Reflection.Output.g
     }
 }
 
-class fc2ScriptsItem extends vscode.TreeItem {
-	public readonly metadata?: Reflection.script = undefined;
+class fc2GenericItem extends vscode.TreeItem {
+	public readonly metadata?: any = undefined;
 	public readonly command?: vscode.Command = undefined;
 	public readonly clipboard?: string = undefined;
+	public readonly entry?: any = undefined;
 
 	constructor(
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly entry?: Reflection.script,
-		options?: { contextValue?: string; command?: vscode.Command; metadata?: Reflection.script, clipboard?: string, icon?: string }
+		options?: { contextValue?: string; command?: vscode.Command; entry?: any; metadata?: any, clipboard?: string, icon?: string }
 	) {
 		super(label, collapsibleState);
 		if (options) {
 			this.contextValue = options.contextValue;
+			this.entry = options.entry;
 			this.metadata = options.metadata;
 			this.command = options.command;
 			this.clipboard = options.clipboard;
-
-			if (!this.clipboard) {
-				this.iconPath = this.metadata?.enabled ? new vscode.ThemeIcon('pass') : undefined;
-			}
-
 			this.iconPath = options.icon ? new vscode.ThemeIcon(options.icon) : this.iconPath;
+		}
+	}
+}
+
+class fc2ScriptsItem extends fc2GenericItem {
+	constructor(
+		public readonly label: string,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		options?: { contextValue?: string; command?: vscode.Command; entry?: any; metadata?: any, clipboard?: string, icon?: string }
+	) {
+		super(label, collapsibleState, options);
+
+		if (!this.clipboard && this.metadata && (this.metadata as Reflection.script).enabled) {
+			this.iconPath = new vscode.ThemeIcon('pass');
 		}
 	}
 }
@@ -396,7 +406,7 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 		if (!element) {
 			if (this.scriptData.length === 0) {
 				return [
-					new fc2ScriptsItem(`Loading...`, vscode.TreeItemCollapsibleState.None, undefined, {
+					new fc2ScriptsItem(`Loading...`, vscode.TreeItemCollapsibleState.None, {
 						contextValue: 'fc2Generic',
 						icon: 'sync'
 					})
@@ -404,48 +414,97 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 			}
 
 			return this.scriptData.map(
-				(entry) =>
-				new fc2ScriptsItem(entry.name, vscode.TreeItemCollapsibleState.Collapsed, entry, {
-					contextValue: 'fc2ScriptEntry',
-					metadata: entry
-				})
+				(entry) => {
+					return new fc2ScriptsItem(entry.name, vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2ScriptEntry',
+						metadata: entry
+					});
+				}
 			);
 		}
 	
-		const entry = element.entry;
-		if (entry) {
-			return [
-				new fc2ScriptsItem(`author: ${entry.author}`, vscode.TreeItemCollapsibleState.None, entry, {
+		if (element.contextValue === 'fc2ScriptEntry' || element.contextValue === 'fc2ScriptModuleEntry') {
+			const is_modules = element.contextValue === 'fc2ScriptModuleEntry';
+			const metadata = element.metadata as Reflection.script;
+			const modules: Reflection.script[] = [];
+			
+			if (!is_modules) {
+				const requirePattern = /require\s*\(?\s*(["'])(.*?)\1\s*\)?/g;
+				let match: RegExpExecArray | null;
+				while ((match = requirePattern.exec(metadata.script)) !== null) {
+					const moduleName = match[2];
+					const actual = 'lib_' + moduleName + '.lua';
+
+					this.scriptData.map(
+						(entry) => {
+							if (entry.name === actual) {
+								modules.push(entry);
+							}
+						}
+					);
+				}
+			}
+
+			const items = [
+				new fc2GenericItem(`author: ${metadata.author}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.author
+					clipboard: metadata.author
 				}),
-				new fc2ScriptsItem(`library: ${entry.library === '1' ? 'Yes' : 'No'}`, vscode.TreeItemCollapsibleState.None, entry, {
+				new fc2GenericItem(`library: ${metadata.library === '1' ? 'Yes' : 'No'}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.library === '1' ? 'Yes' : 'No'
+					clipboard: metadata.library === '1' ? 'Yes' : 'No'
 				}),
-				new fc2ScriptsItem(`elapsed: ${entry.elapsed}`, vscode.TreeItemCollapsibleState.None, entry, {
+				new fc2GenericItem(`elapsed: ${metadata.elapsed}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.library === '1' ? 'Yes' : 'No'
+					clipboard: metadata.library === '1' ? 'Yes' : 'No'
 				}),
-				new fc2ScriptsItem(`forums: ${entry.forums}`, vscode.TreeItemCollapsibleState.None, entry, {
+				new fc2GenericItem(`forums: ${metadata.forums}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.forums
+					clipboard: metadata.forums
 				}),
-				new fc2ScriptsItem(`notes: ${entry.update_notes}`, vscode.TreeItemCollapsibleState.None, entry, {
+				new fc2GenericItem(`notes: ${metadata.update_notes}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.update_notes
+					clipboard: metadata.update_notes
 				}),
-				new fc2ScriptsItem(`id: ${entry.id}`, vscode.TreeItemCollapsibleState.None, entry, {
+				new fc2GenericItem(`id: ${metadata.id}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					metadata: entry,
-					clipboard: entry.id.toString()
+					clipboard: metadata.id.toString()
 				}),
 			];
+
+			if (!is_modules) {
+				if (modules.length > 0) {
+					const names: string[] = [];
+					
+					modules.map(
+						(entry) => {
+							names.push(entry.name);
+						}
+					);
+
+					items.splice(0, 0, new fc2GenericItem(`modules: ${names.join(', ')}`, vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2ScriptModulesEntry',
+						metadata: modules,
+						clipboard: names.join(', ')
+					}));
+				} else {
+					items.splice(0, 0, new fc2GenericItem(`modules: None`, vscode.TreeItemCollapsibleState.None, {
+						contextValue: 'fc2Generic'
+					}));
+				}
+			}
+
+			return items;
+		} else if (element.contextValue === "fc2ScriptModulesEntry") {
+			const scripts: Reflection.script[] = element.metadata as Reflection.script[];
+			return scripts.map(
+				(entry) => {
+					return new fc2ScriptsItem(entry.name, vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2ScriptModuleEntry',
+						metadata: entry
+					});
+				}
+			);
 		}
 
 		return [];
@@ -453,29 +512,6 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 
 	getData(): Reflection.script[] {
 		return this.scriptData;
-	}
-}
-
-class fc2GenericItem extends vscode.TreeItem {
-	public readonly metadata?: any = undefined;
-	public readonly command?: vscode.Command = undefined;
-	public readonly clipboard?: string = undefined;
-	public readonly entry?: any = undefined;
-
-	constructor(
-		public readonly label: string,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		options?: { contextValue?: string; command?: vscode.Command; entry?: any; metadata?: any, clipboard?: string, icon?: string }
-	) {
-		super(label, collapsibleState);
-		if (options) {
-			this.contextValue = options.contextValue;
-			this.entry = options.entry;
-			this.metadata = options.metadata;
-			this.command = options.command;
-			this.clipboard = options.clipboard;
-			this.iconPath = options.icon ? new vscode.ThemeIcon(options.icon) : this.iconPath;
-		}
 	}
 }
 
