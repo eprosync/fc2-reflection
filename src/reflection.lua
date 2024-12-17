@@ -271,6 +271,7 @@ function reflection.vsc_download()
     -- code --install-extension [path]
     -- code --list-extensions --show-versions
     -- https://api.github.com/repos/eprosync/fc2-reflection/releases/latest
+    local self = reflection
     local result = fantasy.terminal("code --version")
     if string.find(result, "'code' is not recognized") or string.find(result, "command not found") then
         print("[Reflection] VSC not found") 
@@ -342,6 +343,7 @@ function reflection.vsc_download()
                     local result = fantasy.terminal( "code --install-extension " .. location)
                     if string.find(result, "Extension 'reflection.vsix' was successfully installed.") then
                         print("[Reflection] VSC Extension Installed, you may reload your IDE to view changes")
+                        return true
                     else
                         print("[Reflection] Error installing VSC Extension, please check the error here:")
                         print(result)
@@ -351,6 +353,7 @@ function reflection.vsc_download()
                 end
             else
                 print("[Reflection] Looks like you are running the latest vsix release")
+                return true
             end
         else
             print("[Reflection] Unable to decode latest fc2-reflection release - " .. data)
@@ -381,7 +384,20 @@ function reflection.on_loaded(script, session)
     print("[Reflection] pipe input: ", self.input)
     print("[Reflection] pipe output: ", self.output)
 
-    reflection.vsc_download()
+    local installed = self.vsc_download()
+    if installed then
+        local found = false
+        local processes = modules.process:list()
+        for k, v in pairs(processes) do
+            if v.name == "code.exe" or v.name == "code" then
+                found = true
+                break
+            end
+        end
+        if not found then
+            fantasy.terminal("code")
+        end
+    end
 end
 
 function reflection.execute(source, name)
