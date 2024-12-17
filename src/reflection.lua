@@ -283,7 +283,10 @@ function reflection.vsc_download()
         if ran then
             local location = modules.file:current_directory() .. "\\reflection.vsix"
             local cache = modules.file:current_directory() .. "\\reflection-extension.txt"
-            
+            if self.session.os ~= "windows" then
+                location = location:gsub("\\", "/")
+                cache = cache:gsub("\\", "/")
+            end
 
             local extensions = fantasy.terminal( "code --list-extensions --show-versions" )
             extensions = explode("\n", extensions)
@@ -359,6 +362,12 @@ function reflection.on_loaded(script, session)
     local self = reflection
     self.session = session
     self.script = script
+
+    if self.session.os ~= "windows" then
+        self.input = self.input:gsub("\\", "/")
+        self.output = self.output:gsub("\\", "/")
+    end
+
     modules.file:write(self.input, "")
     modules.file:write(self.output, "")
     print("[Reflection] solution: ", fantasy.solution)
