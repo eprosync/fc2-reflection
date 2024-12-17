@@ -9,7 +9,7 @@ import fs from "fs";
 */
 
 export namespace Reflection {
-	export const version = 0x005;
+	export const version = 0x006;
 	export let active: boolean = false;
 
 	export interface script {
@@ -27,6 +27,13 @@ export namespace Reflection {
 		software: number,
 		team: string[],
 		update_notes: string
+	}
+
+	export interface perk {
+		name: string,
+		id: number,
+		description: string,
+		enabled: boolean
 	}
 
 	export interface runtime {
@@ -80,8 +87,10 @@ export namespace Reflection {
 		}
 
 		export interface version extends generic {}
-		export interface session extends generic {}
 		export interface reload extends generic {}
+
+		export interface session extends generic {}
+		export interface perks extends generic {}
 
 		export interface execute extends generic {
 			name: string,
@@ -127,7 +136,11 @@ export namespace Reflection {
 		export interface reload extends generic {
 			script: string | boolean
 		}
+
 		export interface session extends generic, Reflection.session {}
+		export interface perks extends generic {
+			list: perk[]
+		}
 
 		export interface execute extends generic {
 			name: string
@@ -270,6 +283,9 @@ function fc2Handle(element: Reflection.Output.generic) {
 		case "session":
 			const session = element as Reflection.Output.session;
 			vscode.window.showInformationMessage(`fc2: Hello ${session.username}!`);
+			fc2Command({
+				command: "perks"
+			});
 			break;
         case "script_toggle":
             const script_toggle = element as Reflection.Output.script_toggle;
@@ -589,9 +605,11 @@ class fc2SessionTree implements vscode.TreeDataProvider<fc2GenericItem> {
 		this._onDidChangeTreeData.event;
 
 	private sessionData: Reflection.session | undefined;
+	private perkData: Reflection.perk[] | undefined;
 
-	update(data: Reflection.session | undefined): void {
+	update(data: Reflection.session | undefined, perks?: Reflection.perk[]): void {
 		this.sessionData = data;
+		this.perkData = perks;
 		this._onDidChangeTreeData.fire();
 	}
 
@@ -611,22 +629,88 @@ class fc2SessionTree implements vscode.TreeDataProvider<fc2GenericItem> {
 		}
 
 		if (!element) {
+			let protection = 'Unknown';
+			switch (session.protection) {
+				case 1: protection = "Standard"; break;
+				case 2: protection = "Kernel"; break;
+				case 3: protection = "Zombie"; break;
+			}
+
+			let ranks: string[] = [];
+			if (session.is_sdk === 1) {
+				ranks.push("SDK");
+			}
+
+			if (session.is_media === 1) {
+				ranks.push("Media");
+			}
+
+			if (session.superstar === 1) {
+				ranks.push("Superstar!");
+			}
+			
 			return [
-				new fc2GenericItem(`username: ${session.username}`, vscode.TreeItemCollapsibleState.None, {
+				new fc2GenericItem(`username: ${session.username} #${session.uid}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					clipboard: session.username,
+					clipboard: `${session.username} #${session.uid}`,
 					icon: "account"
+				}),
+				new fc2GenericItem(`score: ${session.score}`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Detail',
+					clipboard: session.score.toString(),
+					icon: "fold-up"
+				}),
+				new fc2GenericItem(`ranks: ${ranks.join(" & ")}`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Detail',
+					clipboard: ranks.join(" & "),
+					icon: "star"
 				}),
 				new fc2GenericItem(`os: ${session.os}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
 					clipboard: session.os,
 					icon: "home"
 				}),
-				new fc2GenericItem(`protection: ${session.protection}`, vscode.TreeItemCollapsibleState.None, {
+				new fc2GenericItem(`protection: ${protection}`, vscode.TreeItemCollapsibleState.None, {
 					contextValue: 'fc2Detail',
-					clipboard: session.protection.toString(),
-					icon: "lock"
+					clipboard: protection,
+					icon: "shield"
 				}),
+				new fc2GenericItem(`perks`, vscode.TreeItemCollapsibleState.Collapsed, {
+					contextValue: 'fc2SessionPerksEntry',
+					icon: "book"
+				}),
+			];
+		} else if (element.contextValue === "fc2SessionPerksEntry") {
+			if (!this.perkData) {
+				return [
+					new fc2GenericItem(`Loading...`, vscode.TreeItemCollapsibleState.None, {
+						contextValue: 'fc2Generic',
+						icon: 'sync'
+					})
+				];
+			}
+
+			return this.perkData.map(
+				(entry) => {
+					return new fc2GenericItem(`${entry.name}`, vscode.TreeItemCollapsibleState.Collapsed, {
+						contextValue: 'fc2SessionPerkEntry',
+						clipboard: entry.name,
+						metadata: entry,
+						icon: (entry.enabled ? "pass" : undefined)
+					});
+				}
+			);
+		} else if (element.contextValue === "fc2SessionPerkEntry" && element.metadata) {
+			const perk = element.metadata as Reflection.perk;
+			return [
+				new fc2GenericItem(`description: ${perk.description}`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Detail',
+					clipboard: perk.description
+				}),
+				new fc2GenericItem(`id: ${perk.id}`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Detail',
+					clipboard: perk.id.toString()
+				})
 			];
 		}
 
@@ -635,6 +719,14 @@ class fc2SessionTree implements vscode.TreeDataProvider<fc2GenericItem> {
 
 	getData(): Reflection.session | undefined {
 		return this.sessionData;
+	}
+
+	getSession(): Reflection.session | undefined {
+		return this.sessionData;
+	}
+
+	getPerks(): Reflection.perk[] | undefined {
+		return this.perkData;
 	}
 }
 
@@ -975,6 +1067,10 @@ export function activate(context: vscode.ExtensionContext) {
 				const session = element as Reflection.Output.session;
 				fc2SessionProvider.update(session);
 				break;
+			case "perks":
+				const perks = element as Reflection.Output.perks;
+				fc2SessionProvider.update(fc2SessionProvider.getSession(), perks.list);
+				break;
 		}
     });
 
@@ -1092,6 +1188,15 @@ export function activate(context: vscode.ExtensionContext) {
 			fc2ConfigProvider.update(undefined);
 			fc2Command({
 				command: "configs"
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.perks', () => {
+			fc2SessionProvider.update(fc2SessionProvider.getSession(), undefined);
+			fc2Command({
+				command: "perks"
 			});
 		})
 	);

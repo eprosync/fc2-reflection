@@ -29,7 +29,7 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-	export const version = 0x004;
+	export const version = 0x006;
 	export let active: boolean = false;
 
 	export interface script {
@@ -47,6 +47,13 @@ export namespace Reflection {
 		software: number,
 		team: string[],
 		update_notes: string
+	}
+
+	export interface perk {
+		name: string,
+		id: number,
+		description: string,
+		enabled: boolean
 	}
 
 	export interface runtime {
@@ -100,8 +107,10 @@ export namespace Reflection {
 		}
 
 		export interface version extends generic {}
-		export interface session extends generic {}
 		export interface reload extends generic {}
+
+		export interface session extends generic {}
+		export interface perks extends generic {}
 
 		export interface execute extends generic {
 			name: string,
@@ -147,7 +156,11 @@ export namespace Reflection {
 		export interface reload extends generic {
 			script: string | boolean
 		}
+
 		export interface session extends generic, Reflection.session {}
+		export interface perks extends generic {
+			list: perk[]
+		}
 
 		export interface execute extends generic {
 			name: string

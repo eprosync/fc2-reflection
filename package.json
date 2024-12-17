@@ -3,7 +3,7 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -17,16 +17,19 @@
       {
         "command": "fc2.auth",
         "title": "fc2: Authenticate",
+        "category": "fc2",
         "icon": "$(sync)"
       },
       {
         "command": "fc2.execute",
         "title": "fc2: Execute",
+        "category": "fc2",
         "icon": "$(play-circle)"
       },
       {
         "command": "fc2.runtimes.reset",
         "title": "fc2: Kill All Runtimes",
+        "category": "fc2",
         "icon": "$(trash)"
       },
       {
@@ -42,21 +45,31 @@
       {
         "command": "fc2.reload",
         "title": "fc2: Reload",
+        "category": "fc2",
         "icon": "$(sync)"
       },
       {
         "command": "fc2.scripts",
         "title": "fc2: Scripts",
+        "category": "fc2",
         "icon": "$(sync)"
       },
       {
         "command": "fc2.runtimes",
         "title": "fc2: Runtimes",
+        "category": "fc2",
         "icon": "$(sync)"
       },
       {
         "command": "fc2.configs",
         "title": "fc2: Configs",
+        "category": "fc2",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "fc2.perks",
+        "title": "fc2: Perks",
+        "category": "fc2",
         "icon": "$(sync)"
       },
       {
@@ -106,7 +119,12 @@
       "view/item/context": [
         {
           "command": "fc2.copy",
-          "when": "viewItem == fc2Detail || viewItem == fc2ConfigEntry || viewItem == fc2ConfigFileEntry || viewItem == fc2ConfigDataEntry || viewItem == fc2ScriptModulesEntry",
+          "when": "viewItem == fc2Detail || viewItem == fc2SessionPerkEntry || viewItem == fc2ConfigEntry || viewItem == fc2ConfigFileEntry || viewItem == fc2ConfigDataEntry || viewItem == fc2ScriptModulesEntry",
+          "group": "inline"
+        },
+        {
+          "command": "fc2.perks",
+          "when": "viewItem == fc2SessionPerksEntry",
           "group": "inline"
         },
         {

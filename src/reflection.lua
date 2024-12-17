@@ -12,7 +12,7 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
-        export const version = 0x005;
+        export const version = 0x006;
         export let active: boolean = false;
 
         export interface script {
@@ -30,6 +30,13 @@ local json = require("json") -- lib_json
             software: number,
             team: string[],
             update_notes: string
+        }
+
+        export interface perk {
+            name: string,
+            id: number,
+            description: string,
+            enabled: boolean
         }
 
         export interface runtime {
@@ -83,8 +90,10 @@ local json = require("json") -- lib_json
             }
 
             export interface version extends generic {}
-            export interface session extends generic {}
             export interface reload extends generic {}
+
+            export interface session extends generic {}
+            export interface perks extends generic {}
 
             export interface execute extends generic {
                 name: string,
@@ -130,7 +139,11 @@ local json = require("json") -- lib_json
             export interface reload extends generic {
                 script: string | boolean
             }
+
             export interface session extends generic, Reflection.session {}
+            export interface perks extends generic {
+                list: perk[]
+            }
 
             export interface execute extends generic {
                 name: string
@@ -164,7 +177,7 @@ local json = require("json") -- lib_json
     }
 ]]
 
-local reflection_version = 0x005
+local reflection_version = 0x006
 local reflection = { -- for now :cry:
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",
@@ -265,7 +278,7 @@ function reflection.vsc_download()
         print("[Reflection] VSC - " .. explode("\n", result)[1])
 
         print("[Reflection] Looking for extensions...")
-        local data = fantasy.terminal( "curl -H \"User-Agent: fc2-reflection/0.0.4\" https://api.github.com/repos/eprosync/fc2-reflection/releases/latest")
+        local data = fantasy.terminal( "curl -H \"User-Agent: fc2-reflection/1.0\" https://api.github.com/repos/eprosync/fc2-reflection/releases/latest")
         local ran, data = pcall(json.decode, data)
         if ran then
             local location = modules.file:current_directory() .. "\\reflection.vsix"
@@ -655,12 +668,40 @@ function reflection.command(chunk)
         local t = {
             command = "session"
         }
+
+        --[[
+            1 = zombie
+            2 = kernel
+            3 = ?
+        ]]
         for k, v in pairs(self.session) do
             if type(v) ~= "function" then
                 t[k] = v
             end
         end
         return t
+    elseif command == "perks" then
+        local perks = fantasy.session:api("listPerks")
+        perks = json.decode(perks)
+
+        -- session.has_perk appears to be having issues...?
+        local perks_active = self.session.get_perks()
+        for k, v in pairs(perks) do
+            v.id = tonumber(v.id)
+            for kk, vv in pairs(perks_active) do
+                if vv.id == v.id then
+                    v.enabled = true
+                end
+            end
+            if v.enabled == nil then
+                v.enabled = false
+            end
+        end
+
+        return {
+            command = "perks",
+            list = perks
+        }
     elseif command == "scripts" then
         -- Credits: consteliaxo @ typedev
         local scripts = fantasy.session:api("getAllScripts")
