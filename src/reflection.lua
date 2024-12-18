@@ -12,7 +12,7 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
-        export const version = 0x006;
+        export const version = 0x007;
         export let active: boolean = false;
 
         export interface script {
@@ -90,6 +90,9 @@ local json = require("json") -- lib_json
             }
 
             export interface version extends generic {}
+            export interface uplift extends generic {
+                delay?: number
+            }
             export interface reload extends generic {}
 
             export interface session extends generic {}
@@ -136,6 +139,11 @@ local json = require("json") -- lib_json
             export interface version extends generic {
                 version: number
             }
+            export interface uplift extends generic {
+                delay: number,
+                input: string,
+                output: string
+            }
             export interface reload extends generic {
                 script: string | boolean
             }
@@ -177,7 +185,7 @@ local json = require("json") -- lib_json
     }
 ]]
 
-local reflection_version = 0x006
+local reflection_version = 0x007
 local reflection = { -- for now :cry:
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",
@@ -473,6 +481,14 @@ function reflection.command(chunk)
             command = "version",
             version = reflection_version
         }
+	elseif command == "uplift" then
+		if chunk.delay then self.delay = chunk.delay end
+		return {
+			command = "uplift",
+			input = self.input,
+			output = self.output,
+			delay = self.delay
+		}
     elseif command == "execute" then
         local source = chunk.source
         local name = chunk.name or "reflection"

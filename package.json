@@ -3,7 +3,8 @@
   "displayName": "fc2 Reflection",
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
-  "version": "0.0.6",
+  "repository": "https://github.com/eprosync/fc2-reflection",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -169,6 +170,12 @@
             "type": "number",
             "default": 9282,
             "description": "The port we would need to use if using HTTP mode, Universe4 - 9282, Constellation4 - 9283"
+          },
+          "fc2.reflection.interval": {
+            "title": "fc2 Reflection Interval",
+            "type": "number",
+            "default": 1000,
+            "description": "How often in milliseconds should the PIPE mode talk to each other"
           },
           "fc2.reflection.input": {
             "title": "fc2 Reflection Input",

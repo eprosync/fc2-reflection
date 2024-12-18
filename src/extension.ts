@@ -9,7 +9,7 @@ import fs from "fs";
 */
 
 export namespace Reflection {
-	export const version = 0x006;
+	export const version = 0x007;
 	export let active: boolean = false;
 
 	export interface script {
@@ -87,6 +87,9 @@ export namespace Reflection {
 		}
 
 		export interface version extends generic {}
+		export interface uplift extends generic {
+			delay?: number
+		}
 		export interface reload extends generic {}
 
 		export interface session extends generic {}
@@ -132,6 +135,11 @@ export namespace Reflection {
 
 		export interface version extends generic {
 			version: number
+		}
+		export interface uplift extends generic {
+			delay: number,
+			input: string,
+			output: string
 		}
 		export interface reload extends generic {
 			script: string | boolean
@@ -205,25 +213,18 @@ function fc2Handle(element: Reflection.Output.generic) {
                 vscode.window.showInformationMessage("fc2: You are connected!");
                 Reflection.active = true;
 
-				fc2Command({
-					command: "session"
-				});
-
-				fc2Command({
-					command: "scripts"
-				});
-
-				fc2Command({
-					command: "runtimes"
-				});
-
-				fc2Command({
-					command: "configs"
-				});
-
 				const config = vscode.workspace.getConfiguration("fc2.reflection");
+				let config_interval: number | undefined = config.get("interval");
+				if (config_interval !== undefined) {
+					config_interval = config_interval / 1000;
+				}
+
+				fc2Command({
+					command: "uplift",
+					delay: config_interval
+				});
+
 				const config_output: string | undefined = config.get("output");
-		
 				if (!config_output || !fs.existsSync(config_output)) {
 					vscode.window.showWarningMessage("fc2: WARNING - output pipe isn't setup correctly, runtime errors won't show!");
 				}
@@ -232,6 +233,28 @@ function fc2Handle(element: Reflection.Output.generic) {
                 Reflection.active = false;
             }
             break;
+		case "uplift":
+			const uplift = element as Reflection.Output.uplift;
+			const config = vscode.workspace.getConfiguration("fc2.reflection");
+			config.update("input", uplift.input);
+			config.update("output", uplift.output);
+			
+			fc2Command({
+				command: "session"
+			});
+
+			fc2Command({
+				command: "scripts"
+			});
+
+			fc2Command({
+				command: "runtimes"
+			});
+
+			fc2Command({
+				command: "configs"
+			});
+			break;
         case "error":
             const error = element as Reflection.Output.error;
             vscode.window.showErrorMessage("fc2: ERROR - " + error.type + " - " + (error.reason || "unknown"));
@@ -307,7 +330,7 @@ function fc2Handle(element: Reflection.Output.generic) {
 }
 
 let fc2_queue: Reflection.Input.generic[] = [];
-let fc2_queue_timer: NodeJS.Timeout = setTimeout(() => {}, 0);
+let fc2_queue_timer: NodeJS.Timeout = setInterval(() => {}, 1000);
 function fc2Command(data: Reflection.Input.generic): Promise<Reflection.Output.generic | undefined> {
 	if (!Reflection.active && data.command !== "version") {
 		vscode.window.showErrorMessage("fc2: we couldn't confirm our versions, if this persists please contact the developer.");
@@ -321,18 +344,43 @@ function fc2Command(data: Reflection.Input.generic): Promise<Reflection.Output.g
 
     if (config_pipe) {
         if (!config_input || !fs.existsSync(config_input)) {
-            vscode.window.showErrorMessage("fc2: cannot execute due to invalid reflection pipe (see fc2.reflection.input in settings)");
+            vscode.window.showErrorMessage("fc2: cannot execute due to invalid input pipe (see fc2.reflection.input in settings)");
             return Promise.resolve(undefined);
         }
 
+		let config_interval: number | undefined = config.get("interval");
+		if (config_interval !== undefined) {
+			config_interval = config_interval / 1000;
+		}
+
 		fc2_queue.push(data);
-		clearTimeout(fc2_queue_timer);
-		setTimeout(() => {
+		clearInterval(fc2_queue_timer);
+		setInterval(() => {
+			const config = vscode.workspace.getConfiguration("fc2.reflection");
+			const config_pipe: boolean | undefined = config.get("pipe");
+
+			if (!config_pipe) {
+				return;
+			}
+
+			const config_input: string | undefined = config.get("input");
+
+			if (!config_input || !fs.existsSync(config_input)) {
+				return;
+			}
+
+			if (fc2_queue.length === 0) {
+				return;
+			}
+
+			if (fs.statSync(config_input).size > 1) {
+				return;
+			}
+
 			fs.writeFileSync(config_input, JSON.stringify(fc2_queue));
 			fc2_queue = [];
-		}, 500);
+		}, config_interval);
 
-        vscode.window.showInformationMessage('fc2: Reloading fc2 scripts via pipe');
         return Promise.resolve(undefined);
     } else {
         if (!config_port) {
@@ -1201,14 +1249,21 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	// Pipe API
-	timeout = setInterval(() => {
-		if (!Reflection.active) {return;}
+	const config = vscode.workspace.getConfiguration("fc2.reflection");
+	let config_interval: number | undefined = config.get("interval");
+	if (config_interval !== undefined) {
+		config_interval = config_interval / 1000;
+	}
 
+	const output_callback = () => {
 		const config = vscode.workspace.getConfiguration("fc2.reflection");
 		const config_output: string | undefined = config.get("output");
 		
 		if (!config_output || !fs.existsSync(config_output)) {
+			return;
+		}
+
+		if (fs.statSync(config_output).size < 2) {
 			return;
 		}
 
@@ -1227,7 +1282,16 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		response.forEach(fc2Handle);
-	}, 1000);
+	};
+
+	// Pipe API
+	timeout = setInterval(output_callback, config_interval);
+	vscode.workspace.onDidChangeConfiguration((event) => {
+		if (event.affectsConfiguration("fc2.reflection.interval")) {
+			clearInterval(timeout);
+			timeout = setInterval(output_callback, config_interval);
+		}
+	});
 	
 	fc2Command({
 		command: "version"
