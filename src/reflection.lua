@@ -253,6 +253,10 @@ function reflection.event(...)
             local ran = table.remove(returns, 1)
             if not ran then
                 local err = table.remove(returns, 1)
+                local stack = #explode("\n", debug.traceback())
+                local trace = explode("\n", err)
+                for i=1, stack do trace[#trace] = nil end
+                err = table.concat(trace, "\n")
                 local nameid = self.nameid(runtime.script)
                 self.enqueue({
                     command = "error",
@@ -418,8 +422,12 @@ function reflection.execute(source, name)
     end
 
     print("[Reflection] Executing > " .. name)
+    local stack = #explode("\n", debug.traceback())
     local ran, err = xpcall(func, debug.traceback)
     if not ran then
+        local trace = explode("\n", err)
+        for i=1, stack do trace[#trace] = nil end
+        err = table.concat(trace, "\n")
         print("[Reflection] ERROR: From '" .. name .. "' -> " .. err)
         return false, "runtime", err
     end
@@ -440,7 +448,11 @@ function reflection.execute(source, name)
         local callback = err["on_loaded"]
         if type(callback) == "function" then
             local ran, err = xpcall(callback, debug.traceback, tracker, self.session)
+
             if not ran then
+                local trace = explode("\n", err)
+                for i=1, stack do trace[#trace] = nil end
+                err = table.concat(trace, "\n")
                 print("[Reflection] ERROR: From " .. nameid .. " -> " .. err)
                 print("[Reflection] Not adding to runtime due to error")
                 return false, "on_loaded", err
@@ -456,6 +468,9 @@ function reflection.execute(source, name)
         if type(callback) == "function" then
             local ran, err = xpcall(callback, debug.traceback, tracker, self.session)
             if not ran then
+                local trace = explode("\n", err)
+                for i=1, stack do trace[#trace] = nil end
+                err = table.concat(trace, "\n")
                 print("[Reflection] ERROR: From " .. nameid .. " -> " .. err)
                 print("[Reflection] Not adding to runtime due to error")
                 return false, "on_scripts_loaded", err
