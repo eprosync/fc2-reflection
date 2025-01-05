@@ -4,7 +4,7 @@
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
   "repository": "https://github.com/eprosync/fc2-reflection",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.96.0"
   },

@@ -9,7 +9,7 @@ import fs from "fs";
 */
 
 export namespace Reflection {
-	export const version = 0x007;
+	export const version = 0x008;
 	export let active: boolean = false;
 
 	export interface script {
@@ -90,6 +90,14 @@ export namespace Reflection {
 		export interface uplift extends generic {
 			delay?: number
 		}
+		export interface message extends generic {
+			color?: {
+				r: number,
+				g: number,
+				b: number
+			},
+			message: string
+		}
 		export interface reload extends generic {}
 
 		export interface session extends generic {}
@@ -140,6 +148,14 @@ export namespace Reflection {
 			delay: number,
 			input: string,
 			output: string
+		}
+		export interface message extends generic {
+			color?: {
+				r: number,
+				g: number,
+				b: number
+			},
+			message: string
 		}
 		export interface reload extends generic {
 			script: string | boolean
@@ -254,6 +270,10 @@ function fc2Handle(element: Reflection.Output.generic) {
 			fc2Command({
 				command: "configs"
 			});
+			break;
+		case "message":
+			const message = element as Reflection.Output.message;
+			vscode.window.showInformationMessage("fc2: " + message.message);
 			break;
         case "error":
             const error = element as Reflection.Output.error;
