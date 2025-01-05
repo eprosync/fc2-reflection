@@ -225,7 +225,7 @@ do
     end
 
     function color.rgb(r, g, b)
-        return color.rgba(r, g, b, 0)
+        return color.rgba(r, g, b, 255)
     end
 
     function color.hex(hex)
@@ -312,6 +312,10 @@ do
         return color.rgba(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), a * 255)
     end
 
+    local function remap( value, inMin, inMax, outMin, outMax )
+        return outMin + ( ( ( value - inMin ) / ( inMax - inMin ) ) * ( outMax - outMin ) )
+    end
+
     function color.range(delta, ...)
         local list = {...}
         local length = #list
@@ -329,10 +333,10 @@ do
         local diff = (delta - (index - 1) * range) / range
         
         return color.new(
-            math.Remap(diff, 0, 1, first.r, last.r),
-            math.Remap(diff, 0, 1, first.g, last.g),
-            math.Remap(diff, 0, 1, first.b, last.b),
-            math.Remap(diff, 0, 1, first.a, last.a)
+            remap(diff, 0, 1, first.r, last.r),
+            remap(diff, 0, 1, first.g, last.g),
+            remap(diff, 0, 1, first.b, last.b),
+            remap(diff, 0, 1, first.a, last.a)
         )
     end
 
