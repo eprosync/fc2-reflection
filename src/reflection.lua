@@ -14,7 +14,7 @@ local json = require("json") -- lib_json
     
     -- Format --
     export namespace Reflection {
-        export const version = 0x008;
+        export const version = 0x009;
         export let active: boolean = false;
 
         export interface script {
@@ -52,6 +52,10 @@ local json = require("json") -- lib_json
             [key: string]: {
                 [key: string]: boolean | number | string
             }
+        }
+
+        export interface config_script {
+            [key: string]: boolean | number | string
         }
 
         export interface configs {
@@ -132,6 +136,15 @@ local json = require("json") -- lib_json
                 value: boolean | number | string,
                 type: "boolean" | "number" | "string"
             }
+            export interface config_export extends generic {
+                script?: string,
+                solution?: string
+            }
+            export interface config_import extends generic {
+                script?: string,
+                solution?: string,
+                data: config | config_script
+            }
         }
 
         export namespace Output {
@@ -199,11 +212,20 @@ local json = require("json") -- lib_json
                 value: boolean | number | string,
                 type: string
             }
+            export interface config_export extends generic {
+                script?: string,
+                solution?: string,
+                data: config | config_script
+            }
+            export interface config_import extends generic {
+                script?: string,
+                solution?: string
+            }
         }
     }
 ]]
 
-local reflection_version = 0x008
+local reflection_version = 0x009
 local reflection = { -- for now :cry:
     input = modules.file:current_directory() .. "\\reflection_input.txt",
     output = modules.file:current_directory() .. "\\reflection_output.txt",
@@ -628,6 +650,39 @@ function reflection.command(chunk)
         dataset.Reflection = t
 
         return dataset
+    elseif command == "config_export" then
+        local base = json.decode(modules.configuration:get_local())
+
+        if chunk.script then
+            base = base[chunk.solution][chunk.script]
+        elseif chunk.solution then
+            base = base[chunk.solution]
+        end
+
+        if not base then
+            return {
+                command = "error",
+                name = self.script.name,
+                type = "config_export",
+                reason = "configuration does not exist"
+            }
+        end
+
+        chunk.data = base
+        
+        return chunk
+    elseif command == "config_import" then
+        local base = json.decode(modules.configuration:get_local())
+        if chunk.script then
+            base[chunk.solution][chunk.script] = chunk.data 
+        elseif chunk.solution then
+            base[chunk.solution] = chunk.data 
+        else
+            base = chunk.data
+        end
+        modules.configuration:overwrite(json.encode(base))
+        modules.configuration:save()
+        return chunk
     elseif command == "config_update" then
         local solution = chunk.solution
         local runtime_id = chunk.runtime
@@ -731,6 +786,7 @@ function reflection.command(chunk)
 
         dataset[key] = value
         modules.configuration:overwrite(json.encode(base))
+        modules.configuration:save()
 
         return chunk
     elseif command == "runtimes" then

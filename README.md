@@ -29,7 +29,7 @@ By default we have reflection.lua set on HTTP.
 ## Interface
 ```ts
 export namespace Reflection {
-	export const version = 0x008;
+	export const version = 0x009;
 	export let active: boolean = false;
 
 	export interface script {
@@ -67,6 +67,10 @@ export namespace Reflection {
 		[key: string]: {
 			[key: string]: boolean | number | string
 		}
+	}
+
+	export interface config_script {
+		[key: string]: boolean | number | string
 	}
 
 	export interface configs {
@@ -147,6 +151,15 @@ export namespace Reflection {
 			value: boolean | number | string,
 			type: "boolean" | "number" | "string"
 		}
+		export interface config_export extends generic {
+			script?: string,
+			solution?: string
+		}
+		export interface config_import extends generic {
+			script?: string,
+			solution?: string,
+			data: config | config_script
+		}
 	}
 
 	export namespace Output {
@@ -213,6 +226,15 @@ export namespace Reflection {
 			key: string,
 			value: boolean | number | string,
 			type: string
+		}
+		export interface config_export extends generic {
+			script?: string,
+			solution?: string,
+			data: config | config_script
+		}
+		export interface config_import extends generic {
+			script?: string,
+			solution?: string
 		}
 	}
 }

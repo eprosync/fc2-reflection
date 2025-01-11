@@ -4,7 +4,7 @@
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
   "repository": "https://github.com/eprosync/fc2-reflection",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -66,6 +66,18 @@
         "title": "fc2: Configs",
         "category": "fc2",
         "icon": "$(sync)"
+      },
+      {
+        "command": "fc2.configs.export",
+        "title": "fc2: Configs Export",
+        "category": "fc2",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "fc2.configs.import",
+        "title": "fc2: Configs Import",
+        "category": "fc2",
+        "icon": "$(cloud-upload)"
       },
       {
         "command": "fc2.perks",
@@ -131,6 +143,16 @@
         {
           "command": "fc2.configs.update",
           "when": "viewItem == fc2ConfigDataEntry",
+          "group": "inline"
+        },
+        {
+          "command": "fc2.configs.export",
+          "when": "viewItem == fc2ConfigFileEntry",
+          "group": "inline"
+        },
+        {
+          "command": "fc2.configs.import",
+          "when": "viewItem == fc2ConfigFileEntry",
           "group": "inline"
         },
         {

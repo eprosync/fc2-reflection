@@ -9,7 +9,7 @@ import fs from "fs";
 */
 
 export namespace Reflection {
-	export const version = 0x008;
+	export const version = 0x009;
 	export let active: boolean = false;
 
 	export interface script {
@@ -47,6 +47,10 @@ export namespace Reflection {
 		[key: string]: {
 			[key: string]: boolean | number | string
 		}
+	}
+
+	export interface config_script {
+		[key: string]: boolean | number | string
 	}
 
 	export interface configs {
@@ -127,6 +131,15 @@ export namespace Reflection {
 			value: boolean | number | string,
 			type: "boolean" | "number" | "string"
 		}
+		export interface config_export extends generic {
+			script?: string,
+			solution?: string
+		}
+		export interface config_import extends generic {
+			script?: string,
+			solution?: string,
+			data: config | config_script
+		}
 	}
 
 	export namespace Output {
@@ -193,6 +206,15 @@ export namespace Reflection {
 			key: string,
 			value: boolean | number | string,
 			type: string
+		}
+		export interface config_export extends generic {
+			script?: string,
+			solution?: string,
+			data: config | config_script
+		}
+		export interface config_import extends generic {
+			script?: string,
+			solution?: string
 		}
 	}
 }
@@ -340,6 +362,19 @@ function fc2Handle(element: Reflection.Output.generic) {
 		case "config_update":
 			const config_update = element as Reflection.Output.config_update;
 			vscode.window.showInformationMessage(`fc2: Script '${config_update.script}' config has been update`);
+			fc2Command({
+				command: "configs"
+			});
+			break;
+		case "config_import":
+			const config_import = element as Reflection.Output.config_import;
+			if (config_import.script && config_import.solution) {
+				vscode.window.showInformationMessage(`fc2: Imported ${config_import.script} - ${config_import.solution} configuration`);
+			} else if (config_import.solution) {
+				vscode.window.showInformationMessage(`fc2: Imported ${config_import.solution} configuration`);
+			} else {
+				vscode.window.showInformationMessage(`fc2: Imported configurations`);
+			}
 			fc2Command({
 				command: "configs"
 			});
@@ -896,6 +931,7 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 					new fc2GenericItem(solution, vscode.TreeItemCollapsibleState.Collapsed, {
 						contextValue: 'fc2ConfigEntry',
 						entry: configuration,
+						metadata: solution,
 						clipboard: solution
 					})
 				);
@@ -906,6 +942,7 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 					new fc2GenericItem('Reflection', vscode.TreeItemCollapsibleState.Collapsed, {
 						contextValue: 'fc2ConfigEntry',
 						entry: reflection,
+						metadata: 'Reflection',
 						clipboard: 'Reflection'
 					})
 				);
@@ -936,7 +973,10 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 						new fc2GenericItem(script, vscode.TreeItemCollapsibleState.Collapsed, {
 							contextValue: 'fc2ConfigFileEntry',
 							entry: store,
-							metadata: script,
+							metadata: {
+								script: script,
+								solution: element.metadata
+							},
 							clipboard: script
 						})
 					);
@@ -1076,11 +1116,65 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs.export', (entry?: fc2GenericItem) => {
+			console.log(entry);
+			fc2Command({
+				command: "config_export",
+				solution: entry?.metadata.solution,
+				script: entry?.metadata.script
+			});
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs.import', (entry?: fc2GenericItem) => {
+			const editor = vscode.window.activeTextEditor;
+			if (editor) {
+				const fileContents = editor.document.getText();
+				let json_data;
+				try {
+					json_data = JSON.parse(fileContents);
+				} catch(err) {
+					vscode.window.showErrorMessage(`fc2: Failed to parse json data for import: ${err}`);
+					return;
+				}
+
+				fc2Command({
+					command: "config_import",
+					solution: entry?.metadata.solution,
+					script: entry?.metadata.script,
+					data: json_data
+				});
+			} else {
+				vscode.window.showErrorMessage("fc2: you must be viewing a file currently to import");
+			}
+		})
+	);
+
 	fc2Event.event((element: Reflection.Output.generic) => {
 		switch (element.command) {
 			case "configs":
 				const configs = element as Reflection.Output.configs;
 				fc2ConfigProvider.update(configs);
+				break;
+			case "config_export":
+				const config_export = element as Reflection.Output.config_export;
+				vscode.workspace.openTextDocument({
+					language: "json",
+					content: JSON.stringify(config_export.data, null, 4)
+				}).then(doc => {
+					if (config_export.script && config_export.solution) {
+						vscode.window.showInformationMessage(`fc2: Opened ${config_export.script} - ${config_export.solution} configuration`);
+					} else if (config_export.solution) {
+						vscode.window.showInformationMessage(`fc2: Opened ${config_export.solution} configuration`);
+					} else {
+						vscode.window.showInformationMessage(`fc2: Opened configurations`);
+					}
+					vscode.window.showTextDocument(doc);
+				}, error => {
+					vscode.window.showInformationMessage(`fc2: Failed to open configuration export`);
+				});
 				break;
 		}
     });
