@@ -1007,7 +1007,7 @@ function reflection.pipe_read()
 end
 
 local defer = os.clock()
-function reflection.on_worker()
+function reflection.on_worker(...)
     local self = reflection
 
     local t = os.clock()
@@ -1018,7 +1018,7 @@ function reflection.on_worker()
     end
 
     _event = "on_worker"
-    self.event()
+    self.event(...)
 end
 
 return reflection
