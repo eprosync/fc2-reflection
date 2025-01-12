@@ -333,7 +333,7 @@ function reflection.execute(source, name)
 
         local callback = module["on_solution_calibrated"]
         if type(callback) == "function" then
-            local ran, err = xpcall(callback, debug.traceback, tracker, self.calibration)
+            local ran, err = xpcall(callback, debug.traceback, self.calibration)
             if not ran then
                 local trace = explode("\n", err)
                 for i=1, stack do trace[#trace] = nil end
