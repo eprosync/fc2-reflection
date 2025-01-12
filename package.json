@@ -4,7 +4,7 @@
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
   "repository": "https://github.com/eprosync/fc2-reflection",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -69,14 +69,12 @@
       },
       {
         "command": "fc2.configs.export",
-        "title": "fc2: Configs Export",
-        "category": "fc2",
+        "title": "Configs Export",
         "icon": "$(cloud-download)"
       },
       {
         "command": "fc2.configs.import",
-        "title": "fc2: Configs Import",
-        "category": "fc2",
+        "title": "Configs Import",
         "icon": "$(cloud-upload)"
       },
       {

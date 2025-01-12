@@ -997,13 +997,13 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 					[key: string]: boolean | number | string
 				};
 
-				const identity = element.metadata as string;
-				let name = identity;
+				const identity = element.metadata as {script: string, solution: string};
+				let name = identity.script;
 				let id = 0;
 				let solution = this.configData.solution;
 				
-				if (/#\d+$/.exec(identity)) {
-					const id_ = identity.split("#"); // NOTE: if this becomes a problem I'll switch it to regex captures if I can
+				if (/#\d+$/.exec(identity.script)) {
+					const id_ = identity.script.split("#"); // NOTE: if this becomes a problem I'll switch it to regex captures if I can
 					name = id_[0];
 					id = Number(id_[1]);
 					solution = "Reflection";
