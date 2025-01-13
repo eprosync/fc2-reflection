@@ -511,6 +511,12 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 		this._onDidChangeTreeData.event;
 
 	private scriptData: Reflection.script[] = [];
+	private scriptSearch?: string;
+
+	search(search?: string) {
+		this.scriptSearch = search;
+		this._onDidChangeTreeData.fire();
+	}
 
 	update(data: Reflection.script[]): void {
 		this.scriptData = data;
@@ -532,14 +538,37 @@ class fc2ScriptsTree implements vscode.TreeDataProvider<fc2ScriptsItem> {
 				];
 			}
 
-			return this.scriptData.map(
-				(entry) => {
-					return new fc2ScriptsItem(entry.name, vscode.TreeItemCollapsibleState.Collapsed, {
-						contextValue: 'fc2ScriptEntry',
-						metadata: entry
-					});
+			let built: fc2ScriptsItem[] = [];
+
+			for (let script of this.scriptData) {
+				if (this.scriptSearch && script.name.toLowerCase().indexOf(this.scriptSearch.toLowerCase()) === -1) {
+					continue;
 				}
-			);
+
+				built.push(new fc2ScriptsItem(script.name, vscode.TreeItemCollapsibleState.Collapsed, {
+					contextValue: 'fc2ScriptEntry',
+					metadata: script
+				}));
+			}
+
+			if (built.length === 0) {
+				built = [
+					new fc2ScriptsItem(`No Scripts...`, vscode.TreeItemCollapsibleState.None, {
+						contextValue: 'fc2Generic',
+						icon: 'sync'
+					})
+				];
+			}
+
+			if (this.scriptSearch) {
+				built.unshift(new fc2ScriptsItem(`Search: '${this.scriptSearch}'`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Generic',
+					clipboard: this.scriptSearch,
+					icon: 'search'
+				}));
+			}
+
+			return built;
 		}
 	
 		if (element.contextValue === 'fc2ScriptEntry' || element.contextValue === 'fc2ScriptModuleEntry') {
@@ -900,6 +929,12 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 		this._onDidChangeTreeData.event;
 
 	private configData: Reflection.configs | undefined;
+	private configSearch?: string;
+
+	search(search?: string) {
+		this.configSearch = search;
+		this._onDidChangeTreeData.fire();
+	}
 
 	update(data: Reflection.configs | undefined): void {
 		this.configData = data;
@@ -924,7 +959,7 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 			const solution = this.configData.solution;
 			const configuration = this.configData[solution] as Reflection.config | undefined;
 			const reflection = this.configData.Reflection as Reflection.config | undefined;
-			const built: fc2GenericItem[] = [];
+			let built: fc2GenericItem[] = [];
 
 			if (configuration) {
 				built.push(
@@ -949,12 +984,20 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 			}
 
 			if (built.length === 0) {
-				return [
+				built = [
 					new fc2GenericItem(`No Configurations`, vscode.TreeItemCollapsibleState.None, {
 						contextValue: 'fc2Generic',
 						icon: 'sync'
 					})
 				];
+			}
+
+			if (this.configSearch) {
+				built.unshift(new fc2GenericItem(`Search: '${this.configSearch}'`, vscode.TreeItemCollapsibleState.None, {
+					contextValue: 'fc2Generic',
+					clipboard: this.configSearch,
+					icon: 'search'
+				}));
 			}
 
 			return built;
@@ -968,6 +1011,10 @@ class fc2ConfigTree implements vscode.TreeDataProvider<fc2GenericItem> {
 
 				for (let script in configuration) {
 					let store = configuration[script];
+
+					if (this.configSearch && script.toLowerCase().indexOf(this.configSearch.toLowerCase()) === -1) {
+						continue;
+					}
 					
 					built.push(
 						new fc2GenericItem(script, vscode.TreeItemCollapsibleState.Collapsed, {
@@ -1065,11 +1112,35 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	// Panel - Commands
 	const fc2CommandProvider = new fc2CommandTree();
-	vscode.window.registerTreeDataProvider('fc2-command', fc2CommandProvider);
+	const fc2CommandView = vscode.window.createTreeView('fc2-command', {treeDataProvider: fc2CommandProvider});
+	context.subscriptions.push(fc2CommandView);
 	
 	// Panel - Configs
 	const fc2ConfigProvider = new fc2ConfigTree();
-	vscode.window.registerTreeDataProvider('fc2-config', fc2ConfigProvider);
+	const fc2ConfigView = vscode.window.createTreeView('fc2-config', {treeDataProvider: fc2ConfigProvider});
+	context.subscriptions.push(fc2ConfigView);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs.search', async () => {
+			const input = await vscode.window.showInputBox({
+				prompt: `Search In FC2 Configurations`,
+				placeHolder: `search here, press enter to clear search`
+			});
+
+			if (!input || input.length === 0) {
+				fc2ConfigProvider.search();
+				return;
+			}
+			
+			fc2ConfigProvider.search(input);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.configs.search-stop', async () => {
+			fc2ConfigProvider.search();
+		})
+	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fc2.configs.update', async (entry: fc2GenericItem) => {
@@ -1181,7 +1252,8 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	// Panel - Runtimes
 	const fc2RuntimeProvider = new fc2RuntimeTree();
-	vscode.window.registerTreeDataProvider('fc2-runtime', fc2RuntimeProvider);
+	const fc2RuntimeView =vscode.window.createTreeView('fc2-runtime', {treeDataProvider: fc2RuntimeProvider});
+	context.subscriptions.push(fc2RuntimeView);
 
 	fc2Event.event((element: Reflection.Output.generic) => {
 		switch (element.command) {
@@ -1221,7 +1293,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Panel - Session
 	const fc2SessionProvider = new fc2SessionTree();
-	vscode.window.registerTreeDataProvider('fc2-session', fc2SessionProvider);
+	const fc2SessionView = vscode.window.createTreeView('fc2-session', {treeDataProvider: fc2SessionProvider});
+	context.subscriptions.push(fc2SessionView);
 
 	fc2Event.event((element: Reflection.Output.generic) => {
 		switch (element.command) {
@@ -1238,7 +1311,30 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Panel - Scripts
 	const fc2ScriptsProvider = new fc2ScriptsTree();
-	vscode.window.registerTreeDataProvider('fc2-script', fc2ScriptsProvider);
+	const fc2ScriptsView = vscode.window.createTreeView('fc2-script', {treeDataProvider: fc2ScriptsProvider});
+	context.subscriptions.push(fc2ScriptsView);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.scripts.search', async () => {
+			const input = await vscode.window.showInputBox({
+				prompt: `Search In FC2 Scripts`,
+				placeHolder: `search here, press enter to clear search`
+			});
+
+			if (!input || input.length === 0) {
+				fc2ScriptsProvider.search();
+				return;
+			}
+			
+			fc2ScriptsProvider.search(input);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fc2.scripts.search-stop', async () => {
+			fc2ScriptsProvider.search();
+		})
+	);
 
 	fc2Event.event((element: Reflection.Output.generic) => {
 		switch (element.command) {

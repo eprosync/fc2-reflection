@@ -4,7 +4,7 @@
   "description": "fc2 using reflection.lua for VS Code",
   "publisher": "wholecream",
   "repository": "https://github.com/eprosync/fc2-reflection",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -51,21 +51,40 @@
       },
       {
         "command": "fc2.scripts",
-        "title": "fc2: Scripts",
+        "title": "Sync Scripts",
         "category": "fc2",
         "icon": "$(sync)"
       },
       {
+        "command": "fc2.scripts.search",
+        "title": "Scripts Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "fc2.scripts.search-stop",
+        "title": "Scripts Search Stop",
+        "icon": "$(search-stop)"
+      },
+      {
         "command": "fc2.runtimes",
-        "title": "fc2: Runtimes",
+        "title": "Sync Runtimes",
         "category": "fc2",
         "icon": "$(sync)"
       },
       {
         "command": "fc2.configs",
-        "title": "fc2: Configs",
-        "category": "fc2",
+        "title": "Sync Configs",
         "icon": "$(sync)"
+      },
+      {
+        "command": "fc2.configs.search",
+        "title": "Configs Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "fc2.configs.search-stop",
+        "title": "Configs Search Stop",
+        "icon": "$(search-stop)"
       },
       {
         "command": "fc2.configs.export",
@@ -79,8 +98,7 @@
       },
       {
         "command": "fc2.perks",
-        "title": "fc2: Perks",
-        "category": "fc2",
+        "title": "Sync Perks",
         "icon": "$(sync)"
       },
       {
@@ -112,9 +130,29 @@
               "group": "navigation"
           },
           {
+            "command": "fc2.scripts.search",
+            "when": "view == fc2-script",
+            "group": "navigation"
+          },
+          {
+            "command": "fc2.scripts.search-stop",
+            "when": "view == fc2-script",
+            "group": "navigation"
+          },
+          {
               "command": "fc2.configs",
               "when": "view == fc2-config",
               "group": "navigation"
+          },
+          {
+            "command": "fc2.configs.search",
+            "when": "view == fc2-config",
+            "group": "navigation"
+          },
+          {
+            "command": "fc2.configs.search-stop",
+            "when": "view == fc2-config",
+            "group": "navigation"
           },
           {
               "command": "fc2.runtimes",
